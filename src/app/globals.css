@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+:root {
+  --background: #030816;
+  --foreground: #f7fbff;
+  --muted: rgba(220, 234, 255, 0.78);
+  --cyan: #22f4dc;
+  --blue: #1677ff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  min-width: 320px;
+  background: #030816;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-width: 320px;
+  margin: 0;
+  background:
+    radial-gradient(circle at 74% 12%, rgba(37, 99, 235, 0.36), transparent 32%),
+    radial-gradient(circle at 16% 18%, rgba(34, 211, 238, 0.2), transparent 28%),
+    radial-gradient(circle at 54% 78%, rgba(124, 58, 237, 0.18), transparent 34%),
+    linear-gradient(180deg, #030816 0%, #061329 54%, #040b1b 100%);
+  background-color: #030816;
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.35);
+  color: #ffffff;
+}
+
+@supports not ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
+  .backdrop-blur,
+  .backdrop-blur-xl {
+    background-color: rgba(5, 11, 29, 0.96);
+  }
+}
