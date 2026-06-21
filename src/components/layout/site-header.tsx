@@ -9,8 +9,10 @@ import {
   Globe2,
   LayoutDashboard,
   LogOut,
+  Menu,
   Search,
   Settings,
+  X,
 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 
@@ -86,16 +88,6 @@ const languages = [
 const AUTH_ME_CACHE_KEY = "lumio_me_checked_at";
 const AUTH_ME_CACHE_MS = 2 * 60 * 1000;
 
-function LogoMark() {
-  return (
-    <span className="grid h-12 w-12 shrink-0 grid-cols-3 gap-1 rounded-[15px] bg-gradient-to-br from-sky-400 to-blue-600 p-2 shadow-[0_16px_38px_rgba(37,99,235,0.2)]">
-      {Array.from({ length: 9 }).map((_, i) => (
-        <span key={i} className="rounded-[3px] bg-white" />
-      ))}
-    </span>
-  );
-}
-
 function sameSection(pathname: string | null, href: string) {
   if (!pathname) return false;
   if (href === "/") return pathname === "/";
@@ -158,7 +150,7 @@ function MegaMenu({
         {label}
         <ChevronDown className="h-3.5 w-3.5 transition group-hover/nav:rotate-180 group-focus-within/nav:rotate-180" />
       </Link>
-      <div className="invisible fixed left-0 right-0 top-[150px] z-[80] border-t border-slate-200 bg-white opacity-0 shadow-[0_30px_80px_rgba(15,23,42,0.12)] transition duration-150 group-hover/nav:visible group-hover/nav:opacity-100 group-focus-within/nav:visible group-focus-within/nav:opacity-100">
+      <div className="invisible absolute left-1/2 top-full z-[80] w-screen -translate-x-1/2 border-t border-slate-200 bg-white opacity-0 shadow-[0_30px_80px_rgba(15,23,42,0.12)] transition duration-150 group-hover/nav:visible group-hover/nav:opacity-100 group-focus-within/nav:visible group-focus-within/nav:opacity-100">
         <div className="mx-auto grid max-h-[calc(100vh-170px)] max-w-[1440px] gap-10 overflow-y-auto px-8 py-8 lg:grid-cols-[300px_1fr]">
           <aside>
             <Link href={href} className="inline-flex items-center gap-3 text-2xl font-semibold text-slate-950">
@@ -284,6 +276,7 @@ function AvatarMenu({ auth }: { auth: StoredAuth }) {
 export function SiteHeader() {
   const [auth, setAuth] = useState<StoredAuth | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -336,9 +329,11 @@ export function SiteHeader() {
       </div>
 
       <div className="mx-auto flex h-[70px] max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" aria-label="序光首页" className="flex shrink-0 items-center gap-3 font-black text-slate-950">
-          <LogoMark />
-          <span className="text-[25px] tracking-tight">序光</span>
+        <Link href="/" aria-label="序光首页" className="flex shrink-0 items-center font-black text-slate-950">
+          <div className="flex flex-col leading-none">
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">XUGUANG</span>
+            <span className="text-[25px] tracking-tight">序光</span>
+          </div>
         </Link>
 
         <div className="hidden items-center gap-6 text-[15px] font-medium text-slate-800 lg:flex">
@@ -355,15 +350,6 @@ export function SiteHeader() {
               value={searchQuery}
             />
           </form>
-          <Link href="/help/contact" className="hover:text-blue-700">
-            联系我们
-          </Link>
-          <Link href="/help" className="hover:text-blue-700">
-            文档
-          </Link>
-          <Link href="/workspace" className="hover:text-blue-700">
-            工作台
-          </Link>
           {auth ? (
             <AvatarMenu auth={auth} />
           ) : (
@@ -386,8 +372,42 @@ export function SiteHeader() {
               <Link href="/register">免费开始</Link>
             </Button>
           )}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50"
+            aria-label="打开菜单"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
         </div>
       </div>
+
+      {/* Mobile drawer */}
+      {mobileMenuOpen ? (
+        <div className="fixed inset-0 z-[100] lg:hidden">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-80 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <span className="text-lg font-extrabold text-slate-950">导航</span>
+              <button onClick={() => setMobileMenuOpen(false)} className="grid h-9 w-9 place-items-center rounded-full text-slate-500 hover:bg-slate-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-5">
+              <nav className="space-y-2">
+                <Link href="/product" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-4 py-3 text-base font-bold text-slate-800 hover:bg-slate-50">产品</Link>
+                <Link href="/solutions" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-4 py-3 text-base font-bold text-slate-800 hover:bg-slate-50">解决方案</Link>
+                <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-4 py-3 text-base font-bold text-slate-800 hover:bg-slate-50">价格</Link>
+                <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-4 py-3 text-base font-bold text-slate-800 hover:bg-slate-50">资源中心</Link>
+                <div className="my-3 border-t border-slate-200" />
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-4 py-3 text-base font-bold text-slate-800 hover:bg-slate-50">登录</Link>
+                <Link href="/register" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl bg-blue-600 px-4 py-3 text-center text-base font-bold text-white hover:bg-blue-700">免费开始</Link>
+              </nav>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="hidden border-t border-slate-200 bg-white lg:block">
         <div className="mx-auto flex h-12 max-w-[1440px] items-center px-8">

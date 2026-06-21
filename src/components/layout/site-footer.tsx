@@ -42,8 +42,8 @@ export function SiteFooter() {
               ))}
             </span>
             <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">XUGUANG</p>
               <p className="text-lg font-black text-slate-950">序光</p>
-              <p className="text-xs text-slate-500">AI 原生办公平台</p>
             </div>
           </div>
           <p className="max-w-md leading-7 text-slate-500">

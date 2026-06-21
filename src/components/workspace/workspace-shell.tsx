@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -19,7 +19,6 @@ import {
   DatabaseZap,
   FileText,
   Globe2,
-  Grid3X3,
   Headphones,
   LayoutDashboard,
   ListTodo,
@@ -31,7 +30,6 @@ import {
   Search,
   Settings,
   ShieldCheck,
-  SlidersHorizontal,
   Smile,
   TicketPercent,
   UserRound,
@@ -125,31 +123,35 @@ function currentPathMatches(pathname: string, href: string) {
 
 function WorkspaceLogo({ collapsed }: { collapsed: boolean }) {
   return (
-    <Link
-      href="/"
-      className={cn(
-        "group relative flex items-center rounded-3xl px-3 py-3 transition hover:bg-slate-100",
-        collapsed ? "justify-center" : "gap-3",
-      )}
-      aria-label="前往官网"
-    >
-      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-3xl bg-gradient-to-br from-cyan-300 to-blue-500 text-white shadow-lg shadow-cyan-200">
-        <Grid3X3 className="h-8 w-8" />
-      </span>
-      {!collapsed ? (
-        <span className="min-w-0">
-          <span className="block truncate text-2xl font-black tracking-tight text-slate-950">序光</span>
-        </span>
-      ) : null}
+    <div className="group/logo relative flex items-center">
+      <Link
+        href="/"
+        className={cn(
+          "flex items-center rounded-3xl px-3 py-3 transition hover:bg-slate-100",
+          collapsed ? "justify-center" : "gap-3",
+        )}
+        aria-label="前往官网"
+      >
+        {collapsed ? (
+          <span className="text-2xl font-black tracking-tight text-slate-950">序</span>
+        ) : (
+          <div className="flex flex-col leading-none">
+            <span className="block text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">XUGUANG</span>
+            <span className="block truncate text-2xl font-black tracking-tight text-slate-950">序光</span>
+          </div>
+        )}
+      </Link>
       <span
         className={cn(
-          "pointer-events-none absolute z-50 hidden whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-lg group-hover:block",
-          collapsed ? "left-full top-1/2 ml-3 -translate-y-1/2" : "left-8 top-full mt-2",
+          "pointer-events-none absolute z-50 hidden whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-lg",
+          collapsed
+            ? "left-full top-1/2 ml-3 -translate-y-1/2 group-hover/logo:block"
+            : "left-24 top-full mt-2 group-hover/logo:block",
         )}
       >
         前往官网
       </span>
-    </Link>
+    </div>
   );
 }
 
@@ -175,7 +177,7 @@ function UtilityPanel({
   if (!kind || kind === "account") return null;
 
   return (
-    <aside className="fixed right-20 top-24 z-50 w-[420px] max-w-[calc(100vw-120px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-300/60">
+    <aside className="fixed right-20 top-20 z-50 w-[420px] max-w-[calc(100vw-120px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-300/60">
       <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
@@ -326,20 +328,20 @@ function AccountPanel({
   const accountId = typeof auth.user.id === "string" ? auth.user.id : "local-account";
 
   return (
-    <aside className="fixed right-8 top-24 z-50 w-[430px] max-w-[calc(100vw-80px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-300/60">
-      <div className="flex items-start gap-4 border-b border-slate-200 p-5">
+    <aside className="fixed right-8 top-20 z-50 w-[430px] max-w-[calc(100vw-80px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-300/60">
+      <div className="flex items-center justify-end border-b border-slate-200 px-4 py-3">
+        <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="关闭">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="flex items-start gap-4 px-5 pb-5">
         <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-cyan-300 to-blue-500 text-2xl font-black text-white">
           {avatarInitial}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="truncate text-xl font-black text-slate-950">{displayName}</h3>
-              <p className="mt-1 truncate text-sm text-slate-500">{workspaceName}</p>
-            </div>
-            <button type="button" onClick={onClose} className="rounded-full p-2 text-slate-500 hover:bg-slate-100">
-              <X className="h-5 w-5" />
-            </button>
+          <div className="min-w-0">
+            <h3 className="truncate text-xl font-black text-slate-950">{displayName}</h3>
+            <p className="mt-1 truncate text-sm text-slate-500">{workspaceName}</p>
           </div>
           <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
             <p className="truncate font-semibold text-slate-950">{email}</p>
@@ -432,6 +434,18 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
   const [selectedLanguage, setSelectedLanguage] = useState("zh-CN");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLFormElement>(null);
+
+  // Click outside to close search dropdown
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem("xuguang_workspace_locale");
@@ -603,7 +617,7 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
         <section className="min-w-0">
           <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
             <div className="flex h-[76px] items-center gap-4 px-5 lg:px-8">
-              <form onSubmit={handleSearch} className="relative min-w-0 flex-1 max-w-4xl">
+              <form ref={searchRef} onSubmit={handleSearch} className="relative min-w-0 flex-1 max-w-4xl">
                 <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                 <input
                   value={searchQuery}
@@ -649,30 +663,6 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
               <div className="ml-auto flex shrink-0 items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => toggleUtility("help")}
-                  className="hidden h-11 items-center gap-2 rounded-full px-3 font-bold text-slate-700 transition hover:bg-slate-100 xl:flex"
-                >
-                  <CircleHelp className="h-5 w-5" />
-                  帮助中心
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleUtility("feedback")}
-                  className="hidden h-11 items-center gap-2 rounded-full px-3 font-bold text-slate-700 transition hover:bg-slate-100 xl:flex"
-                >
-                  <Smile className="h-5 w-5" />
-                  满意度
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleUtility("preferences")}
-                  className="grid h-11 w-11 place-items-center rounded-full text-slate-700 transition hover:bg-slate-100"
-                  aria-label="偏好设置"
-                >
-                  <SlidersHorizontal className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
                   onClick={() => toggleUtility("language")}
                   className="hidden h-11 items-center gap-2 rounded-full px-3 font-bold text-slate-700 transition hover:bg-slate-100 md:flex"
                 >
@@ -699,7 +689,7 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
             </div>
           </header>
 
-          <main className="mx-auto max-w-[1680px] px-5 py-8 lg:px-8">
+          <main className="mx-auto max-w-[1680px] px-5 py-8 lg:px-8 lg:pr-20">
             <div className="mb-7 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
               <div className="max-w-4xl">
                 <h1 className="text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">{title}</h1>
@@ -736,6 +726,9 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
                 aria-label={item.label}
               >
                 <Icon className="h-5 w-5" />
+                <span className="pointer-events-none absolute right-full mr-4 hidden whitespace-nowrap rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white shadow-lg group-hover:block">
+                  {item.label}
+                </span>
               </button>
             );
           })}
