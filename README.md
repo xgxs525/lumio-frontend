@@ -2,6 +2,10 @@
 
 序光前端是 AI 原生办公平台的 Web 客户端，基于 Next.js App Router、React、TypeScript 和 Tailwind CSS 构建。前端项目独立维护，默认通过 `NEXT_PUBLIC_API_BASE_URL` 访问后端 FastAPI 服务。
 
+## 品牌命名
+
+前台页面、工作台、登录页和注册页统一使用“序光”作为产品展示名称。技术目录名、仓库名和本地环境变量按项目运行约定保留，不作为用户可见品牌文案。
+
 ## 技术栈
 
 - Next.js App Router

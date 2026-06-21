@@ -57,7 +57,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="bg-[linear-gradient(180deg,#f8fbff_0%,#eef5ff_44%,#ffffff_100%)] text-slate-950">
+    <div className="bg-[radial-gradient(circle_at_16%_12%,rgba(56,189,248,0.18),transparent_30%),radial-gradient(circle_at_86%_8%,rgba(37,99,235,0.14),transparent_28%),linear-gradient(180deg,#f8fafc_0%,#edf4fb_48%,#ffffff_100%)] text-slate-950">
       <div className="mx-auto grid min-h-[calc(100vh-var(--site-header-height))] max-w-7xl items-center gap-10 px-6 py-14 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_30px_90px_rgba(15,23,42,0.12)]">
           <div className="absolute -right-20 top-10 h-64 w-64 rounded-full bg-blue-100" />
