@@ -27,7 +27,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       {!isWorkspace && <SiteHeader />}
-      <main>{children}</main>
+      <main className={!isWorkspace ? "site-main" : undefined}>{children}</main>
       {!isWorkspace && <SiteFooter />}
     </>
   );

@@ -1,6 +1,8 @@
-import { getStoredAuth } from "@/lib/auth";
+﻿import { getStoredAuth } from "@/lib/auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const API_TIMEOUT_MS = 30_000;
+const SLOW_REQUEST_MS = 1_500;
 
 type ApiResponse<T> = {
   success: boolean;
@@ -42,6 +44,31 @@ type AuthResult = ApiResponse<{
   workspace: Record<string, unknown>;
 }>;
 
+async function fetchWithTimeout(url: string, init?: RequestInit) {
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  if (init?.signal) {
+    if (init.signal.aborted) controller.abort();
+    init.signal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
+
+  const startedAt = Date.now();
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("接口响应超时，请稍后重试");
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeout);
+    const duration = Date.now() - startedAt;
+    if (process.env.NODE_ENV !== "production" && duration > SLOW_REQUEST_MS) {
+      console.warn(`[序光 API] slow request ${duration}ms`, url);
+    }
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   const auth = getStoredAuth();
@@ -49,7 +76,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("Authorization", `Bearer ${auth.token}`);
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetchWithTimeout(`${API_BASE}${path}`, {
     ...init,
     headers,
     cache: init?.cache ?? "no-store",
@@ -67,7 +94,7 @@ async function download(path: string): Promise<{ blob: Blob; filename: string }>
   if (auth?.token) {
     headers.set("Authorization", `Bearer ${auth.token}`);
   }
-  const response = await fetch(`${API_BASE}${path}`, { headers, cache: "no-store" });
+  const response = await fetchWithTimeout(`${API_BASE}${path}`, { headers, cache: "no-store" });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.detail || data.error || `请求失败：${response.status}`);
@@ -444,7 +471,7 @@ export const api = {
 
   addKnowledgeSource: (
     knowledgeBaseId: string,
-    payload: { source_type?: string; source_id?: string },
+    payload: { source_type?: string; source_id?: string; title?: string },
   ) =>
     request<ApiResponse<Record<string, unknown>>>(`/knowledge-bases/${knowledgeBaseId}/sources`, {
       method: "POST",
@@ -738,3 +765,4 @@ export const api = {
   enterpriseBillingOverview: () =>
     request<ApiResponse<Record<string, unknown>>>("/billing/enterprise/overview"),
 };
+

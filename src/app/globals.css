@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
   --background: #030816;
@@ -6,6 +6,7 @@
   --muted: rgba(220, 234, 255, 0.78);
   --cyan: #22f4dc;
   --blue: #1677ff;
+  --site-header-height: 150px;
 }
 
 @theme inline {
@@ -24,15 +25,21 @@
 html {
   min-height: 100%;
   min-width: 320px;
+  width: 100%;
+  max-width: 100%;
   background: #030816;
   scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--site-header-height) + 24px);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  overflow-x: hidden;
 }
 
 body {
   min-height: 100vh;
   min-width: 320px;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
   background:
     radial-gradient(circle at 74% 12%, rgba(37, 99, 235, 0.36), transparent 32%),
@@ -45,11 +52,46 @@ body {
   overflow-x: hidden;
 }
 
+#__next,
+main {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+  #__next,
+  main {
+    overflow-x: hidden;
+  }
+}
+
 img,
 svg,
 video,
 canvas {
   max-width: 100%;
+}
+
+a,
+button {
+  min-width: 0;
+}
+
+main,
+section,
+article,
+aside,
+div {
+  min-width: 0;
+}
+
+.site-main {
+  min-height: calc(100vh - var(--site-header-height));
+}
+
+.site-main section {
+  scroll-margin-top: calc(var(--site-header-height) + 24px);
 }
 
 button,
@@ -70,3 +112,91 @@ select {
     background-color: rgba(5, 11, 29, 0.96);
   }
 }
+
+.xuguang-workspace-light {
+  background: #f5f7fb;
+  color: #0f172a;
+}
+
+.xuguang-workspace-light .text-white {
+  color: #0f172a !important;
+}
+
+.xuguang-workspace-light .text-slate-100,
+.xuguang-workspace-light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.xuguang-workspace-light .text-slate-300,
+.xuguang-workspace-light .text-slate-400 {
+  color: #475569 !important;
+}
+
+.xuguang-workspace-light .text-slate-500 {
+  color: #64748b !important;
+}
+
+.xuguang-workspace-light .border-white\/10,
+.xuguang-workspace-light .border-white\/12,
+.xuguang-workspace-light .border-white\/15,
+.xuguang-workspace-light .border-white\/20,
+.xuguang-workspace-light .border-cyan-200\/35,
+.xuguang-workspace-light .border-cyan-200\/45,
+.xuguang-workspace-light .border-cyan-200\/20 {
+  border-color: #dbe3ef !important;
+}
+
+.xuguang-workspace-light .bg-white\/\[0\.03\],
+.xuguang-workspace-light .bg-white\/\[0\.04\],
+.xuguang-workspace-light .bg-white\/\[0\.05\],
+.xuguang-workspace-light .bg-white\/\[0\.06\],
+.xuguang-workspace-light .bg-white\/\[0\.08\],
+.xuguang-workspace-light .bg-white\/5,
+.xuguang-workspace-light .bg-white\/10,
+.xuguang-workspace-light .bg-slate-950\/30,
+.xuguang-workspace-light .bg-slate-950\/35,
+.xuguang-workspace-light .bg-slate-950\/45,
+.xuguang-workspace-light .bg-slate-950\/55,
+.xuguang-workspace-light .bg-slate-950\/60,
+.xuguang-workspace-light .bg-slate-950\/65,
+.xuguang-workspace-light .bg-slate-950\/68,
+.xuguang-workspace-light .bg-slate-950\/70,
+.xuguang-workspace-light .bg-cyan-300\/12 {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+}
+
+.xuguang-workspace-light .hover\:bg-white\/\[0\.06\]:hover,
+.xuguang-workspace-light .hover\:bg-white\/\[0\.09\]:hover,
+.xuguang-workspace-light .hover\:bg-white\/10:hover,
+.xuguang-workspace-light .hover\:bg-slate-950\/65:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.xuguang-workspace-light .hover\:text-white:hover {
+  color: #1d4ed8 !important;
+}
+
+.xuguang-workspace-light .text-cyan-50,
+.xuguang-workspace-light .text-cyan-100,
+.xuguang-workspace-light .text-cyan-200 {
+  color: #0f766e !important;
+}
+
+.xuguang-workspace-light input,
+.xuguang-workspace-light textarea,
+.xuguang-workspace-light select {
+  color: #0f172a;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.xuguang-workspace-light input::placeholder,
+.xuguang-workspace-light textarea::placeholder {
+  color: #94a3b8;
+}
+
+.xuguang-workspace-light option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+

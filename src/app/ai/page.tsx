@@ -25,7 +25,7 @@ function formatDate(value: unknown) {
 
 const initialMessage: Message = {
   role: "assistant",
-  content: "你好，我是 Lumio AI 办公助手。可以帮你总结文件、分析资料、整理文档要点和构建知识库问答。",
+  content: "你好，我是序光 AI 办公助手。可以帮你总结文件、分析资料、整理文档要点，也可以围绕知识库进行问答。",
 };
 
 export default function AiPage() {
@@ -46,10 +46,7 @@ export default function AiPage() {
   }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadConversations();
-    }, 0);
-    return () => window.clearTimeout(timer);
+    void loadConversations();
   }, []);
 
   async function selectConversation(id: string) {
@@ -107,27 +104,27 @@ export default function AiPage() {
       title="AI 聊天"
       subtitle="像使用 ChatGPT 一样提问，但上下文来自你的文件、文档和知识库。"
       rightPanel={
-        <div className="sticky top-24 space-y-4">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5">
-            <FileText className="mb-4 h-6 w-6 text-cyan-200" />
-            <h2 className="text-xl font-black text-white">上下文</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">当前会话会保存到后端，后续可继续接文件、文档和知识库来源。</p>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <FileText className="mb-4 h-6 w-6 text-sky-600" />
+            <h2 className="text-lg font-black text-slate-950">可接入上下文</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">当前会话会保存到后端，后续可继续接入文件、在线文档和知识库来源。</p>
             <div className="mt-4 grid gap-2">
               {["云盘文件", "在线文档", "知识库索引"].map((item) => (
-                <div key={item} className="rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-3 text-sm text-slate-300">
+                <div key={item} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
                   {item}
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-3xl border border-cyan-200/20 bg-cyan-300/10 p-5">
-            <Sparkles className="mb-4 h-5 w-5 text-cyan-200" />
-            <h3 className="font-black text-white">快捷提示词</h3>
+          <div className="rounded-2xl border border-sky-100 bg-sky-50 p-5">
+            <Sparkles className="mb-4 h-5 w-5 text-sky-600" />
+            <h3 className="font-black text-slate-950">快捷提示词</h3>
             <div className="mt-4 grid gap-2">
               {["总结这个文件", "提取关键数据", "生成下一步行动"].map((item) => (
                 <button
                   key={item}
-                  className="rounded-2xl bg-white/[0.06] px-3 py-3 text-left text-sm text-slate-300"
+                  className="rounded-xl bg-white px-3 py-3 text-left text-sm text-slate-700 shadow-sm"
                   onClick={() => setInput(item)}
                 >
                   {item}
@@ -138,16 +135,14 @@ export default function AiPage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
+      {error && <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
       <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
-        <aside className="rounded-3xl border border-white/10 bg-white/[0.06] p-4">
+        <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <Button className="mb-4 w-full" onClick={startNewConversation}>新建聊天</Button>
           <div className="grid gap-2">
             {conversations.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 text-sm text-slate-400">
-                还没有历史会话。
-              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">还没有历史会话。</div>
             ) : (
               conversations.map((item) => {
                 const id = asText(item.id);
@@ -155,8 +150,8 @@ export default function AiPage() {
                 return (
                   <button
                     key={id}
-                    className={`rounded-2xl p-3 text-left text-sm transition ${
-                      active ? "bg-cyan-300 text-slate-950" : "bg-white/[0.05] text-slate-300 hover:bg-white/[0.08]"
+                    className={`rounded-xl p-3 text-left text-sm transition ${
+                      active ? "bg-sky-100 text-sky-900" : "bg-slate-50 text-slate-700 hover:bg-slate-100"
                     }`}
                     onClick={() => void selectConversation(id)}
                   >
@@ -169,15 +164,15 @@ export default function AiPage() {
           </div>
         </aside>
 
-        <section className="flex min-h-[640px] flex-col rounded-3xl border border-white/10 bg-white/[0.06]">
-          <div className="flex items-center justify-between border-b border-white/10 p-5">
+        <section className="flex min-h-[620px] flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 p-5">
             <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-cyan-300 text-slate-950">
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-100 text-sky-700">
                 <Bot className="h-6 w-6" />
               </span>
               <div>
-                <h2 className="text-xl font-black text-white">{conversationId ? "已保存会话" : "新会话"}</h2>
-                <p className="text-sm text-slate-400">消息会保存到 ai_conversations 和 ai_messages。</p>
+                <h2 className="text-xl font-black text-slate-950">{conversationId ? "已保存会话" : "新会话"}</h2>
+                <p className="text-sm text-slate-500">消息会保存到 ai_conversations 和 ai_messages。</p>
               </div>
             </div>
           </div>
@@ -187,31 +182,29 @@ export default function AiPage() {
               <div
                 key={`${message.role}-${index}`}
                 className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-7 ${
-                  message.role === "user"
-                    ? "ml-auto bg-cyan-300 text-slate-950"
-                    : "border border-white/10 bg-slate-950/55 text-slate-200"
+                  message.role === "user" ? "ml-auto bg-sky-600 text-white" : "border border-slate-200 bg-slate-50 text-slate-700"
                 }`}
               >
                 {message.content}
               </div>
             ))}
             {loading && (
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm text-slate-300">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Lumio 正在思考...
+                序光正在思考...
               </div>
             )}
           </div>
 
-          <div className="border-t border-white/10 p-4">
+          <div className="border-t border-slate-200 p-4">
             <div className="flex gap-3">
-              <Button variant="secondary" size="sm">
+              <Button variant="secondary" size="sm" type="button">
                 <Paperclip className="h-4 w-4" />
               </Button>
               <Input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="问 Lumio，或者让它处理你的文件..."
+                placeholder="问序光，或者让它处理你的文件..."
                 onKeyDown={(event) => {
                   if (event.key === "Enter") void handleSend();
                 }}

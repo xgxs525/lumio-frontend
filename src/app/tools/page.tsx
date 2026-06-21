@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 const tools = [
   { href: "/split", title: "表格拆分", description: "按列值、行数或工作表拆分常见表格文件。", icon: FileSpreadsheet },
   { href: "/ai", title: "AI 助手", description: "公式、分析、文档整理与办公问答。", icon: Sparkles },
-  { href: "/templates", title: "模板中心", description: "浏览与上传自定义办公模板。", icon: Wand2 },
+  { href: "/templates", title: "模板中心", description: "浏览公开办公模板，并带入工作台复用。", icon: Wand2 },
 ];
 
 export default function ToolsPage() {

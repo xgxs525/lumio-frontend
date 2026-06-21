@@ -12,38 +12,57 @@ const solutions = [
   { slug: "enterprise", title: "企业协作解决方案", desc: "团队空间、权限、审计、知识库和用量治理。", icon: Building2 },
 ];
 
+const groups = ["行业解决方案", "通用解决方案", "企业协作", "解决方案实践"];
+
 export default function SolutionsPage() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <section className="mx-auto max-w-7xl px-6 py-20">
-        <div className="rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-slate-200 sm:p-12">
-          <span className="rounded-full bg-cyan-50 px-4 py-2 text-sm font-bold text-cyan-700">解决方案</span>
-          <h1 className="mt-8 max-w-4xl text-5xl font-black tracking-tight sm:text-6xl">
-            把文件处理、知识沉淀和团队协作放到真实业务场景里
-          </h1>
-          <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
-            Lumio 不只是单个工具，而是围绕运营、财务、人事、销售、仓储和内容团队的 AI 工作空间。
-          </p>
+    <main className="bg-white text-slate-950">
+      <section className="border-b border-slate-200 bg-slate-50">
+        <div className="mx-auto grid max-w-[1440px] gap-12 px-6 py-16 lg:grid-cols-[320px_1fr] lg:px-10">
+          <aside>
+            <Link href="/solutions" className="inline-flex items-center gap-3 text-2xl font-semibold">
+              查看所有解决方案
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+            <div className="mt-8 space-y-4">
+              {groups.map((item, index) => (
+                <div key={item} className={`w-fit border-b-2 pb-1 ${index === 0 ? "border-slate-950 font-semibold" : "border-transparent text-slate-500"}`}>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </aside>
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-blue-600">Solutions</p>
+            <h1 className="mt-5 text-5xl font-black tracking-tight md:text-6xl">把 AI 办公能力放进真实业务场景</h1>
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
+              围绕运营、财务、人事、销售、仓储、内容和团队知识管理，序光提供可落地的文件处理与协作方案。
+            </p>
+          </div>
         </div>
+      </section>
 
-        <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {solutions.map((item) => {
+      <section className="mx-auto max-w-[1440px] px-6 py-20 lg:px-10">
+        <div className="grid gap-x-16 gap-y-10 md:grid-cols-2">
+          {solutions.map((item, index) => {
             const Icon = item.icon;
             return (
-              <Link key={item.slug} className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl" href={`/solutions/${item.slug}`}>
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-950 text-cyan-200">
+              <Link key={item.slug} href={`/solutions/${item.slug}`} className="group grid grid-cols-[48px_1fr] gap-5 rounded-[8px] p-4 transition hover:bg-slate-50">
+                <span className={`grid h-12 w-12 place-items-center rounded-[8px] text-white ${index % 4 === 0 ? "bg-blue-600" : index % 4 === 1 ? "bg-emerald-500" : index % 4 === 2 ? "bg-orange-500" : "bg-violet-500"}`}>
                   <Icon className="h-6 w-6" />
                 </span>
-                <h2 className="mt-6 text-xl font-black">{item.title}</h2>
-                <p className="mt-3 min-h-20 text-sm leading-6 text-slate-600">{item.desc}</p>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-cyan-700">
-                  查看方案 <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                <span>
+                  <span className="flex items-center gap-2 text-xl font-black text-slate-950">
+                    {item.title}
+                    <ArrowRight className="h-4 w-4 opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100" />
+                  </span>
+                  <span className="mt-2 block leading-7 text-slate-500">{item.desc}</span>
                 </span>
               </Link>
             );
           })}
         </div>
       </section>
-    </div>
+    </main>
   );
 }

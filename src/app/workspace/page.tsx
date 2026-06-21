@@ -36,24 +36,24 @@ const aiCards = [
 
 function AssistantPanel() {
   return (
-    <div className="sticky top-24 rounded-3xl border border-cyan-200/20 bg-[#071529]/92 p-5 shadow-[0_28px_90px_rgba(8,145,178,0.16)]">
+    <div className="sticky top-24 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-300 text-slate-950">
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-100 text-cyan-700">
           <Bot className="h-6 w-6" />
         </span>
         <div className="min-w-0">
-          <p className="truncate font-black text-white">Lumio 助手</p>
-          <p className="text-sm text-slate-400">当前工作空间上下文</p>
+          <p className="truncate font-black text-slate-950">序光助手</p>
+          <p className="text-sm text-slate-500">当前工作空间上下文</p>
         </div>
       </div>
-      <div className="mt-5 rounded-2xl bg-white/[0.06] p-4 text-sm leading-7 text-slate-300">
+      <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-600">
         我可以帮你总结最近上传的文件、生成项目周报、检查数据异常，或把文档沉淀到知识库。
       </div>
       <div className="mt-4 grid gap-2">
         {["总结最近 7 天新增文件", "生成团队周报", "查看待处理任务"].map((item) => (
           <button
             key={item}
-            className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-3 text-left text-sm text-slate-300 transition hover:border-cyan-200/35 hover:text-white"
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left text-sm text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-slate-950"
           >
             {item}
           </button>
@@ -84,31 +84,31 @@ export default function WorkspacePage() {
         </>
       }
     >
-      <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2">
         {quickActions.map((action) => {
           const Icon = action.icon;
           return (
             <Link
               key={action.title}
               href={action.href}
-              className="group rounded-3xl border border-white/10 bg-white/[0.06] p-5 transition hover:-translate-y-0.5 hover:border-cyan-200/35 hover:bg-white/[0.09]"
+              className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md"
             >
               <span className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-cyan-300 to-blue-500 text-slate-950">
                 <Icon className="h-5 w-5" />
               </span>
-              <h2 className="text-lg font-black text-white">{action.title}</h2>
-              <p className="mt-2 min-h-12 text-sm leading-6 text-slate-300/75">{action.description}</p>
+              <h2 className="text-xl font-black text-slate-950">{action.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">{action.description}</p>
             </Link>
           );
         })}
       </section>
 
       <section className="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06]">
-          <div className="flex items-center justify-between border-b border-white/10 p-5">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 p-5">
             <div>
-              <h2 className="text-2xl font-black text-white">最近文件</h2>
-              <p className="mt-1 text-sm text-slate-400">最近上传、编辑和处理过的文件。</p>
+              <h2 className="text-2xl font-black text-slate-950">最近文件</h2>
+              <p className="mt-1 text-sm text-slate-500">最近上传、编辑和处理过的文件。</p>
             </div>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/drive">
@@ -117,36 +117,36 @@ export default function WorkspacePage() {
               </Link>
             </Button>
           </div>
-          <div className="divide-y divide-white/10">
+          <div className="divide-y divide-slate-200">
             {recentFiles.map((file) => (
               <div
                 key={file.name}
                 className="grid min-w-0 gap-3 p-5 text-sm md:grid-cols-[minmax(180px,1fr)_100px_130px_130px]"
               >
-                <span className="min-w-0 truncate font-bold text-white">{file.name}</span>
-                <span className="text-slate-400">{file.type}</span>
-                <span className="text-slate-400">{file.time}</span>
-                <span className="font-semibold text-cyan-100">{file.status}</span>
+                <span className="min-w-0 truncate font-bold text-slate-950">{file.name}</span>
+                <span className="text-slate-500">{file.type}</span>
+                <span className="text-slate-500">{file.time}</span>
+                <span className="font-semibold text-cyan-700">{file.status}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
-            <MessageSquareText className="h-5 w-5 text-cyan-200" />
-            <h2 className="text-2xl font-black text-white">最近 AI 会话</h2>
+            <MessageSquareText className="h-5 w-5 text-cyan-600" />
+            <h2 className="text-2xl font-black text-slate-950">最近 AI 会话</h2>
           </div>
           <div className="grid gap-3">
             {aiCards.map((item) => (
               <Link
                 key={item.title}
                 href="/ai"
-                className="rounded-2xl border border-white/10 bg-slate-950/45 p-4 transition hover:border-cyan-200/35 hover:bg-slate-950/65"
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-cyan-200 hover:bg-cyan-50"
               >
-                <p className="font-bold text-white">{item.title}</p>
-                <p className="mt-2 text-sm text-slate-400">{item.source}</p>
-                <p className="mt-3 text-xs font-semibold text-cyan-100/80">{item.time}</p>
+                <p className="font-bold text-slate-950">{item.title}</p>
+                <p className="mt-2 text-sm text-slate-500">{item.source}</p>
+                <p className="mt-3 text-xs font-semibold text-cyan-700">{item.time}</p>
               </Link>
             ))}
           </div>
@@ -161,28 +161,14 @@ export default function WorkspacePage() {
         ].map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.title} className="rounded-3xl border border-white/10 bg-white/[0.06] p-5">
-              <Icon className="mb-4 h-5 w-5 text-cyan-200" />
-              <p className="text-sm text-slate-400">{item.title}</p>
-              <p className="mt-2 text-2xl font-black text-white">{item.value}</p>
-              <p className="mt-2 text-sm text-slate-400">{item.detail}</p>
+            <div key={item.title} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <Icon className="mb-4 h-5 w-5 text-cyan-600" />
+              <p className="text-sm text-slate-500">{item.title}</p>
+              <p className="mt-2 text-2xl font-black text-slate-950">{item.value}</p>
+              <p className="mt-2 text-sm text-slate-500">{item.detail}</p>
             </div>
           );
         })}
-      </section>
-
-      <section className="mt-6 rounded-3xl border border-cyan-200/20 bg-gradient-to-r from-cyan-300/12 to-blue-500/12 p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-2xl font-black text-white">推荐操作</h2>
-            <p className="mt-2 max-w-3xl text-slate-300/78">
-              将“客户数据分析表”和“Q2 销售复盘.pdf”加入同一个知识库，方便后续问答与团队复用。
-            </p>
-          </div>
-          <Button variant="outline" asChild>
-            <Link href="/knowledge">创建知识库</Link>
-          </Button>
-        </div>
       </section>
     </WorkspaceShell>
   );
