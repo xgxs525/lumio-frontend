@@ -241,6 +241,18 @@ export const api = {
   deleteDriveFile: (fileId: string) =>
     request<{ success: boolean }>(`/drive/files/${fileId}`, { method: "DELETE" }),
 
+  listTrash: () =>
+    request<ApiResponse<DriveFile[]>>("/drive/trash"),
+
+  restoreFile: (fileId: string) =>
+    request<{ success: boolean }>(`/drive/files/${fileId}/restore`, { method: "POST" }),
+
+  permanentDeleteFile: (fileId: string) =>
+    request<{ success: boolean }>(`/drive/files/${fileId}/permanent`, { method: "DELETE" }),
+
+  emptyTrash: () =>
+    request<{ success: boolean; deleted_count: number }>("/drive/trash/empty", { method: "POST" }),
+
   previewDriveFile: (fileId: string) =>
     request<ApiResponse<DrivePreview>>(`/drive/files/${fileId}/preview`),
 

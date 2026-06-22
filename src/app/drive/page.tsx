@@ -293,6 +293,12 @@ export default function DrivePage() {
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             刷新
           </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/drive/trash">
+              <Trash2 className="h-4 w-4" />
+              回收站
+            </Link>
+          </Button>
           <input
             ref={uploadRef}
             className="hidden"
