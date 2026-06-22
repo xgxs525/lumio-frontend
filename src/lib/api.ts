@@ -19,6 +19,7 @@ type WorkspaceOverview = ApiResponse<{
 type DriveFile = Record<string, unknown>;
 type DriveFolder = Record<string, unknown>;
 type Tag = { id: string; name: string; color: string; created_at?: string };
+type SharedFolder = { folder_id: string; name: string; file_count: number; shared_by_name?: string; created_at?: string };
 type ShareItem = Record<string, unknown>;
 type DocumentItem = Record<string, unknown>;
 type KnowledgeBaseItem = Record<string, unknown>;
@@ -271,6 +272,12 @@ export const api = {
 
   removeFileTag: (fileId: string, tagId: string) =>
     request<{ success: boolean }>(`/tags/files/${fileId}/${tagId}`, { method: "DELETE" }),
+
+  listSharedFolders: () =>
+    request<ApiResponse<SharedFolder[]>>("/team/shared-folders"),
+
+  toggleSharedFolder: (folderId: string) =>
+    request<{ success: boolean; is_team_shared: boolean }>(`/team/shared-folders/${folderId}`, { method: "POST" }),
 
   previewDriveFile: (fileId: string) =>
     request<ApiResponse<DrivePreview>>(`/drive/files/${fileId}/preview`),
