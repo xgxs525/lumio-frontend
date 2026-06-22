@@ -35,16 +35,9 @@ export function SiteFooter() {
     <footer className="border-t border-slate-200 bg-[#f5f7fb]">
       <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 md:grid-cols-[1.2fr_1.8fr]">
         <div>
-          <div className="mb-4 flex items-center gap-3">
-            <span className="grid h-9 w-9 grid-cols-3 gap-1 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 p-1.5">
-              {Array.from({ length: 9 }).map((_, i) => (
-                <span key={i} className="rounded-sm bg-white" />
-              ))}
-            </span>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">XUGUANG</p>
-              <p className="text-lg font-black text-slate-950">序光</p>
-            </div>
+          <div className="mb-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">XUGUANG</p>
+            <p className="text-lg font-black text-slate-950">序光</p>
           </div>
           <p className="max-w-md leading-7 text-slate-500">
             XUGUANG 序光，让所有文件、文档和知识都能被 AI 理解和处理。

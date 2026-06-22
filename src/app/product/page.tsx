@@ -2,13 +2,13 @@ import Link from "next/link";
 import { ArrowRight, Bot, Cloud, DatabaseZap, FileText, FolderKanban, LayoutDashboard, Network, Workflow } from "lucide-react";
 
 const products = [
-  { href: "/product/ai-assistant", title: "AI 办公助手", desc: "围绕文件、文档、知识库和任务上下文进行问答、总结与写作。", icon: Bot },
-  { href: "/product/drive", title: "云盘", desc: "统一存储办公文件、模板、知识库附件和 AI 处理结果。", icon: Cloud },
-  { href: "/product/docs", title: "在线文档", desc: "在线写作、AI 改写、版本保存和导出，让资料可持续沉淀。", icon: FileText },
-  { href: "/product/knowledge", title: "知识库", desc: "把 SOP、制度、项目资料和常见问题变成可问答知识资产。", icon: DatabaseZap },
-  { href: "/product/file-ai", title: "文件 AI", desc: "解析 PDF、Word、表格、PPT、图片和文本，支持问答与总结。", icon: Network },
-  { href: "/product/workspace", title: "工作台", desc: "统一查看文件、任务、AI 会话、团队和账号空间。", icon: LayoutDashboard },
-  { href: "/product/automation", title: "自动化流程", desc: "让解析、切片、embedding、总结和业务动作自动流转。", icon: Workflow },
+  { href: "/product/ai-assistant", title: "AI 聊天", desc: "不只是普通聊天，而是可以连接文件、文档、云盘和知识库的智能办公助手。支持流式输出和文件问答。", icon: Bot },
+  { href: "/product/drive", title: "云盘", desc: "平台的文件存储和管理中心。不是普通网盘，而是一个可以被 AI 理解和处理的智能云盘。", icon: Cloud },
+  { href: "/product/docs", title: "在线文档", desc: "在线创建、编辑和管理文档。支持 AI 改写、AI 总结和文档导出。", icon: FileText },
+  { href: "/product/knowledge", title: "知识库", desc: "建立个人或团队知识库，登记文件、文档来源，让 AI 带引用来源进行问答。", icon: DatabaseZap },
+  { href: "/product/file-ai", title: "文件智能处理", desc: "平台最核心的差异化能力。解析 PDF、Word、Excel、PPT、图片和文本，支持问答与总结。", icon: Network },
+  { href: "/product/workspace", title: "工作台", desc: "统一查看文件、任务、AI 会话、团队和账号空间，管理团队成员和权限。", icon: LayoutDashboard },
+  { href: "/product/automation", title: "自动化任务", desc: "让文件解析、切片、数据处理和业务动作自动流转进入任务中心统一追踪。", icon: Workflow },
   { href: "/product/projects", title: "项目协作", desc: "管理任务、负责人、截止时间、项目资料和团队协同。", icon: FolderKanban },
 ];
 
@@ -34,9 +34,9 @@ export default function ProductPage() {
           </aside>
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.22em] text-blue-600">Product</p>
-            <h1 className="mt-5 text-5xl font-black tracking-tight md:text-6xl">序光产品矩阵</h1>
+            <h1 className="mt-5 text-5xl font-black tracking-tight md:text-6xl">XUGUANG 序光产品</h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
-              从云盘、在线文档、文件 AI 到知识库和自动化任务，序光把办公资料连接成一个可协作、可检索、可处理的智能工作空间。
+              从云盘、文档、AI 聊天、文件智能处理到知识库和工作空间，XUGUANG 序光把分散的办公资料连接成一个可协作、可检索、可被 AI 理解和处理的智能平台。
             </p>
           </div>
         </div>
