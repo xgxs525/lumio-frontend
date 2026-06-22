@@ -151,7 +151,7 @@ function MegaMenu({
         <ChevronDown className="h-3.5 w-3.5 transition group-hover/nav:rotate-180 group-focus-within/nav:rotate-180" />
       </Link>
       <div className="invisible absolute left-1/2 top-full z-[80] w-screen -translate-x-1/2 border-t border-slate-200 bg-white opacity-0 shadow-[0_30px_80px_rgba(15,23,42,0.12)] transition duration-150 group-hover/nav:visible group-hover/nav:opacity-100 group-focus-within/nav:visible group-focus-within/nav:opacity-100">
-        <div className="mx-auto grid max-h-[calc(100vh-170px)] max-w-[1440px] gap-10 overflow-y-auto px-8 py-8 lg:grid-cols-[300px_1fr]">
+        <div className="mx-auto grid max-h-[calc(100vh-140px)] max-w-[1440px] gap-10 overflow-y-auto px-8 py-8 lg:grid-cols-[300px_1fr]">
           <aside>
             <Link href={href} className="inline-flex items-center gap-3 text-2xl font-semibold text-slate-950">
               查看所有{label}

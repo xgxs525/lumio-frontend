@@ -47,7 +47,7 @@ export function SiteFooter() {
             </div>
           </div>
           <p className="max-w-md leading-7 text-slate-500">
-            上传、管理和处理你的办公文件，用 AI 聊天、云盘、在线文档和知识库重新组织工作信息。
+            XUGUANG 序光，让所有文件、文档和知识都能被 AI 理解和处理。
           </p>
         </div>
 

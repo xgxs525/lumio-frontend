@@ -60,15 +60,15 @@ function HeroSection() {
         <div className="flex flex-col justify-center">
           <span className="inline-flex w-fit items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-semibold text-blue-700">
             <Sparkles className="h-3.5 w-3.5" />
-            AI 原生办公平台
+            一个能理解文件、文档和知识的 AI 工作空间
           </span>
           <h1 className="mt-8 max-w-2xl text-5xl font-extrabold leading-[1.08] tracking-tight text-slate-950 md:text-7xl">
-            让文件、文档与知识
+            让所有文件、文档和知识
             <br />
-            <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">自动运转</span>
+            <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">都能被 AI 理解和处理</span>
           </h1>
           <p className="mt-8 max-w-xl text-lg leading-8 text-slate-500">
-            序光把云盘、在线文档、知识库和 AI 助手连接起来，帮助团队上传、整理、理解和处理所有办公资料。
+            XUGUANG 序光是一个 AI 原生办公平台，集云盘、在线文档、AI 聊天、文件智能处理、知识库和团队协作于一体，帮助个人和团队高效管理、理解和处理所有办公信息。
           </p>
           <div className="mt-10 flex flex-wrap gap-4">
             <Button asChild size="lg" className="h-14 rounded-xl bg-blue-600 px-9 text-base font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700 hover:shadow-blue-600/30">
@@ -95,7 +95,7 @@ function HeroSection() {
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">序</span>
               <div>
                 <p className="text-sm font-extrabold text-slate-950">XUGUANG 序光</p>
-                <p className="text-xs text-slate-400">智能工作网络</p>
+                <p className="text-xs text-slate-400">AI 原生办公平台</p>
               </div>
             </div>
             <div className="mt-6 rounded-xl bg-slate-50 p-5">
