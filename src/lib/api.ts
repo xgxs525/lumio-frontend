@@ -18,6 +18,7 @@ type WorkspaceOverview = ApiResponse<{
 
 type DriveFile = Record<string, unknown>;
 type DriveFolder = Record<string, unknown>;
+type Tag = { id: string; name: string; color: string; created_at?: string };
 type ShareItem = Record<string, unknown>;
 type DocumentItem = Record<string, unknown>;
 type KnowledgeBaseItem = Record<string, unknown>;
@@ -252,6 +253,24 @@ export const api = {
 
   emptyTrash: () =>
     request<{ success: boolean; deleted_count: number }>("/drive/trash/empty", { method: "POST" }),
+
+  listTags: () =>
+    request<ApiResponse<Tag[]>>("/tags"),
+
+  createTag: (name: string, color: string = "blue") =>
+    request<ApiResponse<Tag>>("/tags", { method: "POST", body: JSON.stringify({ name, color }) }),
+
+  deleteTag: (tagId: string) =>
+    request<{ success: boolean }>(`/tags/${tagId}`, { method: "DELETE" }),
+
+  listFileTags: (fileId: string) =>
+    request<ApiResponse<Tag[]>>(`/tags/files/${fileId}`),
+
+  addFileTags: (fileId: string, tagIds: string[]) =>
+    request<ApiResponse<Tag[]>>(`/tags/files/${fileId}`, { method: "POST", body: JSON.stringify(tagIds) }),
+
+  removeFileTag: (fileId: string, tagId: string) =>
+    request<{ success: boolean }>(`/tags/files/${fileId}/${tagId}`, { method: "DELETE" }),
 
   previewDriveFile: (fileId: string) =>
     request<ApiResponse<DrivePreview>>(`/drive/files/${fileId}/preview`),
