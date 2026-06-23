@@ -356,20 +356,19 @@ export default function AddSourcePage() {
     })();
   }, [knowledgeBaseId]);
 
-  // Auto-save
-  const autoSaveActive = useRef(false);
+  // Auto-save — saves all source types
   function triggerAutoSave() {
-    if (sourceType !== "manual" && sourceType !== "text") return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setSaveStatus("saving");
     saveTimer.current = setTimeout(() => {
       try {
-        // Save per-type
         const allDrafts: Record<string, unknown> = {};
         for (const t of Object.keys(editorContents) as SourceType[]) {
           allDrafts[t] = {
             title: titles[t],
             content: t === sourceType ? editor?.getHTML() || "" : editorContents[t],
+            linkUrl: linkUrls[t],
+            fileName: selectedFiles[t]?.name || "",
           };
         }
         localStorage.setItem(`kb-draft-${knowledgeBaseId}`, JSON.stringify({
@@ -385,29 +384,42 @@ export default function AddSourcePage() {
     }, 2000);
   }
 
+  const [draftLoaded, setDraftLoaded] = useState(false);
   function loadDraft() {
     try {
       const raw = localStorage.getItem(`kb-draft-${knowledgeBaseId}`);
       if (!raw) return;
       const draft = JSON.parse(raw);
-      // Restore per-type drafts
       if (draft.drafts) {
+        const nextTitles = { ...titles };
+        const nextContents = { ...editorContents };
+        const nextLinks = { ...linkUrls };
         for (const t of Object.keys(draft.drafts)) {
-          if (draft.drafts[t].title) {
-            setTitles(prev => ({ ...prev, [t]: draft.drafts[t].title }));
-          }
-          if (draft.drafts[t].content) {
-            setEditorContents(prev => ({ ...prev, [t]: draft.drafts[t].content }));
-          }
+          if (draft.drafts[t].title) nextTitles[t] = draft.drafts[t].title;
+          if (draft.drafts[t].content) nextContents[t] = draft.drafts[t].content;
+          if (draft.drafts[t].linkUrl) nextLinks[t] = draft.drafts[t].linkUrl;
         }
+        setTitles(nextTitles);
+        setEditorContents(nextContents);
+        setLinkUrls(nextLinks);
       }
       if (draft.sourceType) {
         setSourceTypeState(draft.sourceType as SourceType);
       }
+      setDraftLoaded(true);
     } catch { /* ignore */ }
   }
 
   useEffect(() => { if (editor) loadDraft(); }, [editor]);
+
+  // Restore editor content after draft loads AND editor is ready
+  useEffect(() => {
+    if (!draftLoaded || !editor || !editorContents[sourceType]) return;
+    const html = editorContents[sourceType];
+    if (html && editor.getHTML() !== html) {
+      editor.commands.setContent(html, false);
+    }
+  }, [draftLoaded, editor, sourceType]);
 
   // TOC from headings
   const toc = useMemo<TOCItem[]>(() => {
