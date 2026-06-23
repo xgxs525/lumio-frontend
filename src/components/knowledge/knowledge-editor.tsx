@@ -33,13 +33,14 @@ type Props = {
   onChange: (html: string) => void;
   sourceType?: string;
   onGeneratePlainText?: (text: string) => void;
+  editorClassName?: string;
 };
 
 const tbBtn = "grid h-7 w-7 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-200/80 hover:text-slate-700 data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700";
 
 const TB = "flex items-center gap-0.5 px-1.5 py-1";
 
-export default function KnowledgeEditor({ value, onChange, sourceType = "text" }: Props) {
+export default function KnowledgeEditor({ value, onChange, sourceType = "text", editorClassName }: Props) {
   const [insertOpen, setInsertOpen] = useState(false);
   const insertRef = useRef<HTMLDivElement>(null);
 
@@ -74,7 +75,7 @@ export default function KnowledgeEditor({ value, onChange, sourceType = "text" }
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: {
-        class: "min-h-[280px] max-h-[360px] overflow-y-auto px-5 py-4 text-sm text-slate-800 outline-none prose-sm max-w-none focus:outline-none",
+        class: editorClassName || "min-h-[280px] max-h-[360px] overflow-y-auto px-5 py-4 text-sm text-slate-800 outline-none prose-sm max-w-none focus:outline-none",
       },
     },
   });

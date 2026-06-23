@@ -526,8 +526,22 @@ export const api = {
   listKnowledgeSources: (knowledgeBaseId: string) =>
     request<ApiResponse<Array<Record<string, unknown>>>>(`/knowledge-bases/${knowledgeBaseId}/sources`),
 
+  updateKnowledgeSource: (knowledgeBaseId: string, sourceId: string, payload: Record<string, unknown>) =>
+    request<ApiResponse<Record<string, unknown>>>(`/knowledge-bases/${knowledgeBaseId}/sources/${sourceId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+
+  listKnowledgeChunks: (knowledgeBaseId: string) =>
+    request<ApiResponse<Array<Record<string, unknown>>>>(`/knowledge-bases/${knowledgeBaseId}/chunks`),
+
   syncKnowledgeBase: (knowledgeBaseId: string) =>
     request<ApiResponse<Record<string, unknown>>>(`/knowledge-bases/${knowledgeBaseId}/sync`, {
+      method: "POST",
+    }),
+  syncKnowledgeSource: (knowledgeBaseId: string, sourceId: string) =>
+    request<ApiResponse<Record<string, unknown>>>(`/knowledge-bases/${knowledgeBaseId}/sources/${sourceId}/sync`, {
       method: "POST",
     }),
 
@@ -536,6 +550,9 @@ export const api = {
 
   deleteKnowledgeSource: (knowledgeBaseId: string, sourceId: string) =>
     request<{ success: boolean }>(`/knowledge-bases/${knowledgeBaseId}/sources/${sourceId}`, { method: "DELETE" }),
+
+  deleteKnowledgeChunk: (knowledgeBaseId: string, chunkId: string) =>
+    request<{ success: boolean }>(`/knowledge-bases/${knowledgeBaseId}/chunks/${chunkId}`, { method: "DELETE" }),
 
   askKnowledgeBase: (knowledgeBaseId: string, payload: { question: string }) =>
     request<ApiResponse<Record<string, unknown>>>(`/knowledge-bases/${knowledgeBaseId}/ask`, {

@@ -90,7 +90,6 @@ const sidebarSections: NavSection[] = [
     title: "内容资产",
     items: [
       { href: "/drive", label: "云盘", icon: Cloud },
-      { href: "/docs", label: "文档", icon: FileText },
       { href: "/knowledge", label: "知识库", icon: DatabaseZap },
       { href: "/history", label: "历史记录", icon: Clock },
     ],
@@ -109,7 +108,6 @@ const searchableItems = [
   { href: "/ai", label: "智能任务", desc: "选择模型或智能推荐，完成各类 AI 任务" },
   { href: "/models", label: "模型广场", desc: "浏览和比较已接入的 AI 模型" },
   { href: "/drive", label: "云盘", desc: "上传文件，让 AI 读取和分析" },
-  { href: "/docs", label: "文档", desc: "保存 AI 生成或整理后的内容" },
   { href: "/knowledge", label: "知识库", desc: "沉淀长期资料，让 AI 基于你的内容回答" },
   { href: "/billing", label: "账单与额度", desc: "套餐、订单、支付和额度" },
   { href: "/settings", label: "账号设置", desc: "资料、安全、绑定账号和注销" },
@@ -632,7 +630,7 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
                   }}
                   onFocus={() => setSearchOpen(true)}
                   className="h-14 w-full rounded-full border border-slate-200 bg-slate-100 pl-14 pr-5 text-base font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  placeholder="搜索会话、模型、文件或文档"
+                  placeholder="搜索会话、模型、文件或知识库"
                   aria-label="搜索"
                 />
                 {searchOpen ? (

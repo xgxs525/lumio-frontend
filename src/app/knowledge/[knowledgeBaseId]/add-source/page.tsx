@@ -35,9 +35,12 @@ import {
 type Rec = Record<string, unknown>;
 const asText = (v: unknown, fb = "") => typeof v === "string" ? v : fb;
 const asNum = (v: unknown, fb = 0) => typeof v === "number" ? v : fb;
+const titleFromFileName = (name: string) => name.replace(/\.[^/.]+$/, "").trim() || name;
 
 type SourceType = "file" | "drive" | "document" | "text" | "link" | "manual";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+const sourceTypeKeys: SourceType[] = ["manual", "text", "file", "drive", "document", "link"];
+const isSourceType = (value: string): value is SourceType => sourceTypeKeys.includes(value as SourceType);
 
 interface TOCItem { id: string; level: number; text: string }
 
@@ -270,7 +273,7 @@ export default function AddSourcePage() {
   const setTitle = (v: string) => setTitles(prev => ({ ...prev, [sourceType]: v }));
   const editorContent = editorContents[sourceType];
   const selectedFile = selectedFiles[sourceType];
-  const setSelectedFile = (f: File | null) => setSelectedFiles(prev => ({ ...prev, [sourceType]: f }));
+  const effectiveTitle = title || (sourceType === "file" && selectedFile ? titleFromFileName(selectedFile.name) : "");
   const linkUrl = linkUrls[sourceType];
   const setLinkUrl = (v: string) => setLinkUrls(prev => ({ ...prev, [sourceType]: v }));
   const charCount = charCounts[sourceType];
@@ -395,9 +398,11 @@ export default function AddSourcePage() {
         const nextContents = { ...editorContents };
         const nextLinks = { ...linkUrls };
         for (const t of Object.keys(draft.drafts)) {
-          if (draft.drafts[t].title) nextTitles[t] = draft.drafts[t].title;
-          if (draft.drafts[t].content) nextContents[t] = draft.drafts[t].content;
-          if (draft.drafts[t].linkUrl) nextLinks[t] = draft.drafts[t].linkUrl;
+          if (!isSourceType(t)) continue;
+          const draftForType = draft.drafts[t] as { title?: string; content?: string; linkUrl?: string };
+          if (draftForType.title) nextTitles[t] = draftForType.title;
+          if (draftForType.content) nextContents[t] = draftForType.content;
+          if (draftForType.linkUrl) nextLinks[t] = draftForType.linkUrl;
         }
         setTitles(nextTitles);
         setEditorContents(nextContents);
@@ -417,7 +422,7 @@ export default function AddSourcePage() {
     if (!draftLoaded || !editor || !editorContents[sourceType]) return;
     const html = editorContents[sourceType];
     if (html && editor.getHTML() !== html) {
-      editor.commands.setContent(html, false);
+      editor.commands.setContent(html, { emitUpdate: false });
     }
   }, [draftLoaded, editor, sourceType]);
 
@@ -462,6 +467,26 @@ export default function AddSourcePage() {
     editor?.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   };
 
+  function handleSelectedFileChange(file: File | null) {
+    const previousFile = selectedFiles.file;
+    setSelectedFiles(prev => ({ ...prev, file }));
+
+    if (file) {
+      const nextDefaultTitle = titleFromFileName(file.name);
+      const previousDefaultTitle = previousFile ? titleFromFileName(previousFile.name) : "";
+      setTitles(prev => {
+        const currentTitle = prev.file.trim();
+        if (currentTitle && currentTitle !== previousDefaultTitle) return prev;
+        return { ...prev, file: nextDefaultTitle };
+      });
+    } else if (previousFile) {
+      const previousDefaultTitle = titleFromFileName(previousFile.name);
+      setTitles(prev => prev.file.trim() === previousDefaultTitle ? { ...prev, file: "" } : prev);
+    }
+
+    triggerAutoSave();
+  }
+
   // ── Submit ──
   async function handleSubmit() {
     if (sourceType === "manual") {
@@ -493,7 +518,8 @@ export default function AddSourcePage() {
         source_type: sourceType,
         source_id: sourceId,
       };
-      if (title.trim()) payload.title = title.trim();
+      const payloadTitle = effectiveTitle.trim();
+      if (payloadTitle) payload.title = payloadTitle;
 
       await api.addKnowledgeSource(knowledgeBaseId, payload);
 
@@ -664,6 +690,15 @@ export default function AddSourcePage() {
                   <Upload className="mx-auto h-10 w-10 text-slate-300" />
                   <h3 className="mt-4 text-lg font-bold text-slate-900">上传文件</h3>
                   <p className="mt-1 text-sm text-slate-500">支持 PDF、Word、Excel、PPT、TXT、Markdown、图片等格式。</p>
+                  <div className="mt-6 text-left">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">资料标题</label>
+                    <input
+                      value={title}
+                      onChange={(e) => { setTitle(e.target.value); triggerAutoSave(); }}
+                      placeholder="选择文件后会自动填入，也可以手动修改"
+                      className="w-full h-[48px] rounded-[14px] border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
+                    />
+                  </div>
                   <div className="mt-6 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-10 text-center hover:border-blue-300 hover:bg-blue-50/30 transition cursor-pointer"
                     onClick={() => fileRef.current?.click()}>
                     <Upload className="mx-auto h-8 w-8 text-slate-400" />
@@ -671,7 +706,8 @@ export default function AddSourcePage() {
                     <p className="mt-1 text-xs text-slate-400">PDF · Word · Excel · PPT · TXT · Markdown · 图片</p>
                     <input ref={fileRef} type="file" className="hidden" onChange={(e) => {
                       const f = e.target.files?.[0];
-                      if (f) setSelectedFile(f);
+                      if (f) handleSelectedFileChange(f);
+                      e.currentTarget.value = "";
                     }} />
                   </div>
                   {selectedFile && (
@@ -681,7 +717,7 @@ export default function AddSourcePage() {
                         <p className="text-sm font-semibold text-slate-700">{selectedFile.name}</p>
                         <p className="text-xs text-slate-400">{(selectedFile.size / 1024).toFixed(1)} KB</p>
                       </div>
-                      <button className="text-slate-400 hover:text-red-500" onClick={() => setSelectedFile(null)}><X className="h-4 w-4" /></button>
+                      <button className="text-slate-400 hover:text-red-500" onClick={() => handleSelectedFileChange(null)}><X className="h-4 w-4" /></button>
                     </div>
                   )}
                 </div>
@@ -831,7 +867,7 @@ export default function AddSourcePage() {
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">资料信息</h4>
                 <div className="space-y-3 text-sm">
                   {[
-                    ["资料标题", title || "未填写"],
+                    ["资料标题", effectiveTitle || "未填写"],
                     ["来源类型", { manual: "手动录入", text: "粘贴文本", file: "上传文件", link: "网页链接", drive: "云盘文件", document: "导入文档" }[sourceType]],
                     ["所属知识库", kbLoading ? "加载中..." : kbName],
                     ["字数", `${wordCount} 字`],
