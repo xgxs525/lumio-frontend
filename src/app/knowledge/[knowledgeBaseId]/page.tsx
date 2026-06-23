@@ -1138,6 +1138,7 @@ function SourceReader({
         ) : (
           <SourceContentView source={source} chunks={chunks} />
         )}
+      </article>
     </div>
   );
 }
