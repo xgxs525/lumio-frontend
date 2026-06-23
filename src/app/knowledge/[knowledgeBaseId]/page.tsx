@@ -1096,7 +1096,8 @@ function SourceReader({
                   </>
                 ) : null}
                 {asText(source.fileId) ? (
-                  <a href={`/api/v1/drive/files/${asText(source.fileId)}/download`} download={asText(source.originalFilename) || asText(source.title)}
+                  <a href={`${process.env["NEXT_PUBLIC_API_BASE_URL"] ?? "http://localhost:8000/api/v1"}/drive/files/${asText(source.fileId)}/download`}
+                    target="_blank" rel="noreferrer" download={asText(source.originalFilename) || asText(source.title)}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Download className="h-4 w-4" />下载原文件</a>
                 ) : null}
                 <button onClick={onCopyLink} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Copy className="h-4 w-4" />复制链接</button>

@@ -9,8 +9,9 @@ function asText(v: unknown, fallback = "") { return typeof v === "string" ? v : 
 function asNum(v: unknown, fallback = 0) { return typeof v === "number" ? v : fallback; }
 function stripHtml(html: string) { if (!html) return ""; return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(); }
 
-// ── File URL helper ──
-function fileDownloadUrl(fileId: string) { return `/api/v1/drive/files/${fileId}/download`; }
+// ── File URL helper (full backend URL for iframe/img auth) ──
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+function fileDownloadUrl(fileId: string) { return `${API_BASE}/drive/files/${fileId}/download`; }
 function hasFile(source: Rec) { return !!asText(source.fileId); }
 
 // ── Classify ──
@@ -27,16 +28,24 @@ function classifySource(source: Rec) {
   if (ext === ".pptx" || ext === ".ppt" || mime.includes("presentation") || mime.includes("powerpoint")) return "ppt" as const;
   if (ext === ".txt" || ext === ".md" || ext === ".markdown" || mime.startsWith("text/")) return "text" as const;
   if (st === "link") return "link" as const;
-  if (st === "manual" || st === "text" || asText(source.rawText) || chunks.length > 0) return "text" as const;
+  if (st === "manual" || st === "text" || asText(source.rawText)) return "text" as const;
   return "unknown" as const;
 }
 
-// ── PDF Viewer ──
+// ── PDF Viewer (object tag for auth cookie support) ──
 function PDFViewer({ source }: { source: Rec }) {
   const fileId = asText(source.fileId);
   const url = fileId ? fileDownloadUrl(fileId) : "";
   return (
-    <iframe src={url} className="w-full min-h-[800px] border-0 rounded-b-xl" title="PDF 预览" />
+    <object data={url} type="application/pdf" className="w-full min-h-[800px] border-0 rounded-b-xl" title="PDF 预览">
+      <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+        <FileText className="h-10 w-10 text-slate-300" />
+        <p className="text-sm text-slate-400">浏览器不支持嵌入 PDF 预览。</p>
+        <a href={url} download className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">
+          <Download className="mr-1.5 inline h-3.5 w-3.5" />下载 PDF 文件
+        </a>
+      </div>
+    </object>
   );
 }
 
