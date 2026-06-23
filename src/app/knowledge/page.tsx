@@ -289,11 +289,7 @@ export default function KnowledgePage() {
                   <div className="absolute right-4 top-12 z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-lg">
                     <MenuLink href={`/knowledge/${id}`} label="打开" onClick={() => setMenuId("")} />
                     <MenuLink href={`/knowledge/${id}/add-source`} label="添加资料" onClick={() => setMenuId("")} />
-                    <button onClick={() => openEditModal(b)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Pencil className="h-4 w-4" />重命名</button>
-                    <button onClick={() => openEditModal(b)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50">修改简介</button>
-                    <button onClick={() => openEditModal(b)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50">修改可见范围</button>
-                    <button onClick={() => unavailable("默认模型")} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50"><Settings className="h-4 w-4" />默认模型</button>
-                    <button onClick={() => unavailable("处理策略")} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50">处理策略</button>
+                    <MenuLink href={`/knowledge/${id}?settings=1`} label="知识库设置" onClick={() => setMenuId("")} />
                     <button onClick={() => copyBaseLink(b)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Copy className="h-4 w-4" />复制链接</button>
                     <button onClick={() => unavailable("停用知识库")} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50">停用知识库</button>
                     <div className="my-1 border-t border-slate-100" />
@@ -303,7 +299,6 @@ export default function KnowledgePage() {
 
                 <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                   <span>{asNum(b.sourceCount)} 条内容</span>
-                  <span>{asNum(b.chunkCount)} 个索引片段</span>
                   {st !== "active" && <span className="text-amber-600">{statusLabel[st] || st}</span>}
                 </div>
                 <div className="mt-2 text-[11px] text-slate-400">

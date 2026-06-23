@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ChevronRight,
@@ -211,7 +211,6 @@ function contentMetaLine(source: Rec) {
   const parts = [
     sourceTypeLabel(source),
     statusLabel(source.syncStatus),
-    `${asNum(source.chunkCount)} 个片段`,
     sourceUpdatedAt(source) ? `更新于 ${distanceToNow(sourceUpdatedAt(source))}` : "",
     bytesLabel(source.fileSize),
   ].filter(Boolean);
@@ -259,6 +258,7 @@ function editableRawHtml(source: Rec, fallbackChunks: Rec[] = []) {
 export default function KnowledgeDetailPage() {
   const { knowledgeBaseId } = useParams<{ knowledgeBaseId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [base, setBase] = useState<Rec | null>(null);
   const [sources, setSources] = useState<Rec[]>([]);
@@ -285,6 +285,12 @@ export default function KnowledgeDetailPage() {
   const [qaLoading, setQaLoading] = useState(false);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Auto-open settings from query param (?settings=1)
+  useEffect(() => {
+    if (searchParams.get("settings") === "1") setSettingsOpen(true);
+  }, [searchParams]);
+
   const [settingsForm, setSettingsForm] = useState({
     name: "",
     description: "",
@@ -632,8 +638,6 @@ export default function KnowledgeDetailPage() {
               <span>{asText(base.updatedAt) ? `更新于 ${fmt(asText(base.updatedAt))}` : "暂无更新时间"}</span>
               <span>·</span>
               <span>{asNum(base.sourceCount)} 条内容</span>
-              <span>·</span>
-              <span>{asNum(base.chunkCount)} 个索引片段</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -730,7 +734,6 @@ export default function KnowledgeDetailPage() {
                     sourceMenuOpen={sourceMenuOpen}
                     setSourceMenuOpen={setSourceMenuOpen}
                     onCopy={(text) => copyText(text, "内容已复制。")}
-                    onReprocess={() => reprocessSource(selectedSource)}
                     onCopyLink={() => copySourceLink(selectedSource)}
                     onRename={() => unavailable("重命名")}
                     isEditing={editingSourceId === asText(selectedSource.id)}
@@ -743,10 +746,7 @@ export default function KnowledgeDetailPage() {
                     onEditHtmlChange={setEditHtml}
                     onSaveEdit={() => saveEditedSource(selectedSource)}
                     onCancelEdit={cancelEditSource}
-                    onOpenProcessing={() => { setProcessingDetailSource(selectedSource); setSourceMenuOpen(false); }}
-                    onOpenChunks={() => { setChunkListSource(selectedSource); setSourceMenuOpen(false); }}
                     onDelete={() => { setDeleteSource(selectedSource); setSourceMenuOpen(false); }}
-                    processing={processingSourceId === asText(selectedSource.id)}
                   />
                 )}
               </section>
@@ -1010,7 +1010,6 @@ function SourceReader({
   sourceMenuOpen,
   setSourceMenuOpen,
   onCopy,
-  onReprocess,
   onCopyLink,
   onRename,
   isEditing,
@@ -1023,17 +1022,13 @@ function SourceReader({
   onEditHtmlChange,
   onSaveEdit,
   onCancelEdit,
-  onOpenProcessing,
-  onOpenChunks,
   onDelete,
-  processing,
 }: {
   source: Rec;
   chunks: Rec[];
   sourceMenuOpen: boolean;
   setSourceMenuOpen: (open: boolean) => void;
   onCopy: (text: string) => void;
-  onReprocess: () => void;
   onCopyLink: () => void;
   onRename: () => void;
   isEditing: boolean;
@@ -1046,10 +1041,7 @@ function SourceReader({
   onEditHtmlChange: (value: string) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
-  onOpenProcessing: () => void;
-  onOpenChunks: () => void;
   onDelete: () => void;
-  processing: boolean;
 }) {
   const text = sourcePlainText(source, chunks);
   const sourceType = asText(source.sourceType, "manual");
@@ -1105,9 +1097,6 @@ function SourceReader({
                     <button onClick={() => toast.error("创建可编辑副本暂未开放")} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50">创建可编辑副本</button>
                   </>
                 ) : null}
-                <button onClick={onOpenProcessing} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Info className="h-4 w-4" />查看处理详情</button>
-                <button onClick={onOpenChunks} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Eye className="h-4 w-4" />查看引用片段</button>
-                <button onClick={onReprocess} disabled={processing} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50 disabled:opacity-50">{processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}重新处理</button>
                 <button onClick={onCopyLink} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Copy className="h-4 w-4" />复制链接</button>
                 <button onClick={onRename} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50"><Pencil className="h-4 w-4" />重命名</button>
                 <div className="my-1 border-t border-slate-100" />
