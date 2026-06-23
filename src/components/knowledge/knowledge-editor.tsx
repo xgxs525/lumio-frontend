@@ -162,10 +162,9 @@ export default function KnowledgeEditor({ value, onChange, sourceType = "text", 
     [editor],
   );
 
-  if (!editor) return null;
-
   // ── Auto-scroll during drag selection ──
   useEffect(() => {
+    if (!editor) return;
     const el = editor.view.dom;
     let rafId = 0;
     let scrolling = false;
