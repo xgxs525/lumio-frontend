@@ -164,6 +164,47 @@ export default function KnowledgeEditor({ value, onChange, sourceType = "text", 
 
   if (!editor) return null;
 
+  // ── Auto-scroll during drag selection ──
+  useEffect(() => {
+    const el = editor.view.dom;
+    let rafId = 0;
+    let scrolling = false;
+
+    const onMove = (e: MouseEvent) => {
+      if (!e.buttons) { scrolling = false; cancelAnimationFrame(rafId); return; }
+      const rect = el.getBoundingClientRect();
+      const threshold = 60;
+      const minSpeed = 2, maxSpeed = 18;
+      const y = e.clientY;
+      const topDist = y - rect.top;
+      const botDist = rect.bottom - y;
+
+      const scroll = (dir: number, dist: number) => {
+        if (!scrolling) return;
+        const speed = Math.min(maxSpeed, Math.max(minSpeed, (threshold - Math.max(0, dist)) * (maxSpeed - minSpeed) / threshold + minSpeed));
+        el.scrollTop += dir * speed;
+        rafId = requestAnimationFrame(() => scroll(dir, dist));
+      };
+
+      if (topDist < threshold && topDist > 0) { scrolling = true; cancelAnimationFrame(rafId); rafId = requestAnimationFrame(() => scroll(-1, topDist)); }
+      else if (botDist < threshold && botDist > 0) { scrolling = true; cancelAnimationFrame(rafId); rafId = requestAnimationFrame(() => scroll(1, botDist)); }
+      else { scrolling = false; cancelAnimationFrame(rafId); }
+    };
+
+    const onUp = () => { scrolling = false; cancelAnimationFrame(rafId); };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") { scrolling = false; cancelAnimationFrame(rafId); } };
+
+    document.addEventListener("mousemove", onMove, { passive: true });
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("keydown", onEsc);
+      cancelAnimationFrame(rafId);
+    };
+  }, [editor]);
+
   const chain = () => editor.chain().focus();
 
   // ── Actions ──

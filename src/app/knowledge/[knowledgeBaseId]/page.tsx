@@ -32,6 +32,7 @@ import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import KnowledgeEditor from "@/components/knowledge/knowledge-editor";
+import SourceContentView from "@/components/knowledge/source-content-view";
 import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
@@ -221,14 +222,31 @@ function isTextLikeSource(source: Rec) {
   const sourceType = asText(source.sourceType);
   const filename = (asText(source.originalFilename) || sourceTitle(source)).toLowerCase();
   const mime = asText(source.fileMimeType).toLowerCase();
+  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")) : "";
   return sourceType === "manual"
     || sourceType === "text"
     || sourceType === "link"
-    || filename.endsWith(".txt")
-    || filename.endsWith(".md")
-    || filename.endsWith(".markdown")
-    || mime.startsWith("text/")
-    || mime.includes("markdown");
+    || filename.endsWith(".txt") || filename.endsWith(".md") || filename.endsWith(".markdown")
+    || mime.startsWith("text/") || mime.includes("markdown");
+}
+
+// Can be directly edited in the rich text editor (all text-based + spreadsheet types)
+function canEditDirectly(source: Rec) {
+  if (isTextLikeSource(source)) return true;
+  const filename = (asText(source.originalFilename) || sourceTitle(source)).toLowerCase();
+  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")) : "";
+  const mime = asText(source.fileMimeType).toLowerCase();
+  return ext === ".xlsx" || ext === ".xls" || ext === ".csv" || ext === ".tsv"
+    || mime.includes("spreadsheet") || mime.includes("excel") || mime === "text/csv"
+    || ext === ".pptx" || ext === ".ppt" || mime.includes("presentation");
+}
+
+// Is image type
+function isImageSource(source: Rec) {
+  const filename = (asText(source.originalFilename) || sourceTitle(source)).toLowerCase();
+  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")) : "";
+  const mime = asText(source.fileMimeType).toLowerCase();
+  return mime.startsWith("image/") || [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp"].includes(ext);
 }
 
 function editableRawHtml(source: Rec, fallbackChunks: Rec[] = []) {
@@ -718,7 +736,7 @@ export default function KnowledgeDetailPage() {
                     isEditing={editingSourceId === asText(selectedSource.id)}
                     editTitle={editTitle}
                     editHtml={editHtml}
-                    canEditDirectly={isTextLikeSource(selectedSource)}
+                    canEditDirectly={canEditDirectly(selectedSource)}
                     savingEdit={savingSource}
                     onStartEdit={() => beginEditSource(selectedSource)}
                     onEditTitleChange={setEditTitle}
@@ -1101,9 +1119,9 @@ function SourceReader({
         </div>
       </div>
 
-      <article className="mx-auto max-w-4xl px-6 py-8">
+      <article className="mx-auto max-w-4xl">
         {isEditing ? (
-          <div className="space-y-4">
+          <div className="space-y-4 px-6 py-8">
             <KnowledgeEditor
               value={editHtml}
               onChange={onEditHtmlChange}
@@ -1118,18 +1136,8 @@ function SourceReader({
             </div>
           </div>
         ) : (
-          <>
-        {sourceType === "link" && asText(source.url) ? (
-          <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm text-blue-800">
-            网页地址：<a href={asText(source.url)} target="_blank" rel="noreferrer" className="break-all underline">{asText(source.url)}</a>
-          </div>
-        ) : null}
-        <div className="whitespace-pre-wrap text-[15px] leading-8 text-slate-800">
-          {text || "暂未提取出可预览的正文内容。你可以重新处理资料，或检查原始内容是否为空。"}
-        </div>
-          </>
+          <SourceContentView source={source} chunks={chunks} />
         )}
-      </article>
     </div>
   );
 }
