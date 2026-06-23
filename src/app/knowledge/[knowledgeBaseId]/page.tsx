@@ -8,17 +8,15 @@ import {
   ChevronRight,
   Copy,
   Database,
+  Download,
   ExternalLink,
-  Eye,
   FileText,
-  Info,
   Link2,
   Loader2,
   MessageCircle,
   MoreHorizontal,
   Pencil,
   Plus,
-  RefreshCw,
   Search,
   Send,
   Settings,
@@ -1096,6 +1094,10 @@ function SourceReader({
                     <button onClick={onStartEdit} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Pencil className="h-4 w-4" />编辑提取内容</button>
                     <button onClick={() => toast.error("创建可编辑副本暂未开放")} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50">创建可编辑副本</button>
                   </>
+                ) : null}
+                {asText(source.fileId) ? (
+                  <a href={`/api/v1/drive/files/${asText(source.fileId)}/download`} download={asText(source.originalFilename) || asText(source.title)}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Download className="h-4 w-4" />下载原文件</a>
                 ) : null}
                 <button onClick={onCopyLink} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Copy className="h-4 w-4" />复制链接</button>
                 <button onClick={onRename} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50"><Pencil className="h-4 w-4" />重命名</button>
