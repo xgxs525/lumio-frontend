@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BriefcaseBusiness, CreditCard, Database, Loader2, RefreshCw, ShieldCheck, Users, Workflow, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -39,7 +40,6 @@ export default function AdminPage() {
   const [logs, setLogs] = useState<RecordMap[]>([]);
   const [integrations, setIntegrations] = useState<RecordMap>({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const metrics = useMemo(() => {
     const raw = overview.metrics && typeof overview.metrics === "object" ? (overview.metrics as RecordMap) : {};
@@ -47,7 +47,6 @@ export default function AdminPage() {
   }, [overview]);
 
   async function loadAdmin() {
-    setError("");
     setLoading(true);
     try {
       const [overviewResult, userResult, workspaceResult, jobResult, commerceResult, logResult, integrationResult] =
@@ -68,7 +67,7 @@ export default function AdminPage() {
       setLogs(logResult.data);
       setIntegrations(integrationResult.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "后台数据加载失败");
+      toast.error(err instanceof Error ? err.message : "后台数据加载失败");
     } finally {
       setLoading(false);
     }
@@ -115,8 +114,6 @@ export default function AdminPage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {[
           { label: "文件", value: metrics.files, icon: Database },

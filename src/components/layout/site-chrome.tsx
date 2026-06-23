@@ -11,13 +11,13 @@ const workspacePrefixes = [
   "/drive",
   "/docs",
   "/knowledge",
-  "/tasks",
-  "/team",
-  "/usage",
   "/billing",
-  "/admin",
-  "/enterprise",
   "/settings",
+  "/models",
+  "/file-understand",
+  "/history",
+  "/image-gen",
+  "/video-gen",
 ];
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {

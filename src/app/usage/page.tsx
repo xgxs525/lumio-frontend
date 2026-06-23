@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Brain, Cloud, Database, Loader2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -49,7 +50,6 @@ export default function UsagePage() {
   const [summary, setSummary] = useState<RecordMap>({});
   const [records, setRecords] = useState<RecordMap[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const aiPercent = Math.min(100, asNumber(summary.aiPercent));
   const storagePercent = Math.min(100, asNumber(summary.storagePercent));
@@ -63,7 +63,6 @@ export default function UsagePage() {
   }, [records]);
 
   async function loadUsage() {
-    setError("");
     setLoading(true);
     try {
       const [summaryResult, recordResult] = await Promise.all([
@@ -73,7 +72,7 @@ export default function UsagePage() {
       setSummary(summaryResult.data);
       setRecords(recordResult.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "用量数据加载失败");
+      toast.error(err instanceof Error ? err.message : "用量数据加载失败");
     } finally {
       setLoading(false);
     }
@@ -104,8 +103,6 @@ export default function UsagePage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
           { label: "当前套餐", value: asText(summary.plan, "free"), desc: "工作空间订阅档位", icon: Database },

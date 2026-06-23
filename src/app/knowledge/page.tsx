@@ -1,542 +1,354 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DatabaseZap, FileText, Loader2, Plus, Search, Settings, Sparkles, Upload } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Database, FileText, Loader2, Plus, Search, Settings, Trash2, Upload, X } from "lucide-react";
 
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
-type RecordMap = Record<string, unknown>;
+type Rec = Record<string, unknown>;
+function asText(v: unknown, fallback = "") { return typeof v === "string" ? v : fallback; }
+function asNum(v: unknown, fallback = 0) { return typeof v === "number" ? v : fallback; }
 
-const coverColors = [
-  "from-slate-700 to-slate-950",
-  "from-orange-400 to-amber-500",
-  "from-cyan-400 to-teal-400",
-  "from-blue-500 to-cyan-300",
-  "from-fuchsia-500 to-pink-500",
-  "from-emerald-500 to-lime-500",
-];
+const { format, formatDistanceToNow, parseISO } = (() => {
+  try {
+    const df = new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    function fmt(d: Date) { return df.format(d); }
+    function dist(d: Date) {
+      const ms = Date.now() - d.getTime();
+      const min = Math.floor(ms / 60000);
+      if (min < 1) return "刚刚";
+      if (min < 60) return `${min} 分钟前`;
+      const hrs = Math.floor(min / 60);
+      if (hrs < 24) return `${hrs} 小时前`;
+      const days = Math.floor(hrs / 24);
+      if (days < 30) return `${days} 天前`;
+      return fmt(d);
+    }
+    return { format: fmt, formatDistanceToNow: dist, parseISO: (s: string) => new Date(s) };
+  } catch {
+    const fallback = (d: Date) => d.toLocaleString("zh-CN");
+    return { format: fallback, formatDistanceToNow: fallback as (d: Date) => string, parseISO: (s: string) => new Date(s) };
+  }
+})();
 
-const visibilityOptions = [
-  { value: "private", label: "仅当前知识库成员可见" },
-  { value: "workspace", label: "当前工作空间可见" },
-  { value: "public", label: "公开可见" },
-];
+const visibilityLabel: Record<string, string> = { private: "私有", workspace: "成员可见", public: "公开" };
+const visibilityHint: Record<string, string> = { private: "仅你自己可见", workspace: "仅知识库成员可见", public: "有权限的用户可访问" };
 
-function asText(value: unknown, fallback = "") {
-  return typeof value === "string" ? value : fallback;
-}
+const statusLabel: Record<string, string> = { active: "正常", processing: "处理中", disabled: "已停用", error: "异常" };
 
-function asNumber(value: unknown, fallback = 0) {
-  return typeof value === "number" ? value : fallback;
-}
-
-function visibilityLabel(value: unknown) {
-  return visibilityOptions.find((item) => item.value === value)?.label ?? "仅成员可见";
-}
-
-function sourceLabel(source: RecordMap) {
-  const type = asText(source.sourceType, asText(source.source_type, "manual"));
-  if (type === "file") return "文件";
-  if (type === "document") return "文档";
-  return "手动来源";
-}
+type Filter = "全部" | "私有" | "成员可见" | "公开" | "已停用";
 
 export default function KnowledgePage() {
-  const [bases, setBases] = useState<RecordMap[]>([]);
-  const [files, setFiles] = useState<RecordMap[]>([]);
-  const [documents, setDocuments] = useState<RecordMap[]>([]);
-  const [sources, setSources] = useState<RecordMap[]>([]);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const [bases, setBases] = useState<Rec[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<Filter>("全部");
+  const [sort, setSort] = useState<"updated" | "created" | "sources" | "name">("updated");
+
+  // Create modal
   const [createOpen, setCreateOpen] = useState(false);
-  const [sourceOpen, setSourceOpen] = useState(false);
-  const [settingsBase, setSettingsBase] = useState<RecordMap | null>(null);
-  const [activeBaseId, setActiveBaseId] = useState("");
-  const [sourceType, setSourceType] = useState<"file" | "document" | "manual">("file");
-  const [sourceId, setSourceId] = useState("");
-  const [question, setQuestion] = useState("这个知识库里有哪些关键结论？");
-  const [answer, setAnswer] = useState<RecordMap | null>(null);
   const [form, setForm] = useState({ name: "", description: "", visibility: "private" });
+  const [formTouched, setFormTouched] = useState(false);
 
-  const activeBase = useMemo(
-    () => bases.find((item) => asText(item.id) === activeBaseId) ?? bases[0],
-    [activeBaseId, bases],
-  );
+  // Delete modal
+  const [deleteTarget, setDeleteTarget] = useState<Rec | null>(null);
+  const [deleteConfirmCode, setDeleteConfirmCode] = useState("");
+  const [deleteInput, setDeleteInput] = useState("");
 
-  const filteredBases = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
-    if (!keyword) return bases;
-    return bases.filter((item) => {
-      const name = asText(item.name).toLowerCase();
-      const description = asText(item.description).toLowerCase();
-      return name.includes(keyword) || description.includes(keyword);
-    });
-  }, [bases, query]);
-
-  async function loadData() {
-    setLoading(true);
-    setError("");
-    try {
-      const [baseResult, fileResult, documentResult] = await Promise.all([
-        api.listKnowledgeBases(),
-        api.listDriveFiles(),
-        api.listDocuments(),
-      ]);
-      const nextBases = Array.isArray(baseResult.data) ? baseResult.data : [];
-      setBases(nextBases);
-      setFiles(Array.isArray(fileResult.data) ? fileResult.data : []);
-      setDocuments(Array.isArray(documentResult.data) ? documentResult.data : []);
-      if (!activeBaseId && nextBases[0]) setActiveBaseId(asText(nextBases[0].id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "知识库加载失败");
-    } finally {
-      setLoading(false);
-    }
+  function openDeleteModal(b: Rec) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    setDeleteConfirmCode(code);
+    setDeleteInput("");
+    setDeleteTarget(b);
   }
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const expectedDeleteInput = deleteTarget ? deleteConfirmCode + asText(deleteTarget.name) : "";
 
-  useEffect(() => {
-    async function loadSources() {
-      if (!activeBase) {
-        setSources([]);
-        return;
-      }
-      try {
-        const result = await api.listKnowledgeSources(asText(activeBase.id));
-        setSources(Array.isArray(result.data) ? result.data : []);
-      } catch {
-        setSources([]);
-      }
-    }
-    loadSources();
-  }, [activeBase]);
+  async function loadBases() {
+    setLoading(true);
+    try {
+      const r = await api.listKnowledgeBases();
+      setBases(Array.isArray(r.data) ? r.data : []);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "加载失败");
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { loadBases(); }, []);
 
   async function createBase() {
-    if (!form.name.trim()) {
-      setError("请输入知识库名称");
-      return;
-    }
+    setFormTouched(true);
+    if (!form.name.trim()) { return; }
     setSaving(true);
-    setError("");
     try {
-      const result = await api.createKnowledgeBase({
-        name: form.name.trim(),
-        description: form.description.trim(),
-        visibility: form.visibility,
-      });
-      setBases((current) => [result.data, ...current]);
-      setActiveBaseId(asText(result.data.id));
+      const r = await api.createKnowledgeBase({ name: form.name.trim(), description: form.description.trim(), visibility: form.visibility });
+      setBases((prev) => [r.data, ...prev]);
       setCreateOpen(false);
+      const newId = (r.data as Rec).id as string;
       setForm({ name: "", description: "", visibility: "private" });
-      setNotice("知识库已创建。");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "创建知识库失败");
-    } finally {
-      setSaving(false);
-    }
+      if (newId) { router.push(`/knowledge/${newId}/add-source`); return; }
+      toast.success("知识库已创建。");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "创建失败"); }
+    finally { setSaving(false); }
   }
 
-  async function saveSettings() {
-    if (!settingsBase) return;
+  async function deleteBase() {
+    if (!deleteTarget) return;
     setSaving(true);
-    setError("");
     try {
-      const result = await api.updateKnowledgeBase(asText(settingsBase.id), {
-        name: asText(settingsBase.name),
-        description: asText(settingsBase.description),
-        visibility: asText(settingsBase.visibility, "private"),
-      });
-      setBases((current) => current.map((item) => (asText(item.id) === asText(result.data.id) ? result.data : item)));
-      setSettingsBase(null);
-      setNotice("知识库设置已保存。");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "保存知识库设置失败");
-    } finally {
-      setSaving(false);
-    }
+      await api.deleteKnowledgeBase(asText(deleteTarget.id));
+      setBases((prev) => prev.filter((b) => asText(b.id) !== asText(deleteTarget.id)));
+      setDeleteTarget(null);
+      toast.success("知识库已删除。");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "删除失败"); }
+    finally { setSaving(false); }
   }
 
-  async function addSource() {
-    if (!activeBase) return;
-    if (!sourceId.trim()) {
-      setError("请选择或填写要加入知识库的资料来源。");
-      return;
+  const filtered = useMemo(() => {
+    let items = [...bases];
+    if (filter !== "全部") {
+      if (filter === "已停用") items = items.filter((b) => asText(b.status) === "disabled");
+      else {
+        const visKey = filter === "私有" ? "private" : filter === "成员可见" ? "workspace" : "public";
+        items = items.filter((b) => asText(b.visibility, "private") === visKey && asText(b.status, "active") !== "disabled");
+      }
     }
-    setSaving(true);
-    setError("");
-    try {
-      await api.addKnowledgeSource(asText(activeBase.id), {
-        source_type: sourceType,
-        source_id: sourceId.trim(),
-        title: sourceType === "manual" ? sourceId.trim() : undefined,
-      });
-      const result = await api.listKnowledgeSources(asText(activeBase.id));
-      setSources(Array.isArray(result.data) ? result.data : []);
-      setSourceOpen(false);
-      setSourceId("");
-      setNotice("资料来源已登记，并将用于知识切片与索引。");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "登记资料来源失败");
-    } finally {
-      setSaving(false);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      items = items.filter((b) => asText(b.name).toLowerCase().includes(q) || asText(b.description).toLowerCase().includes(q));
     }
-  }
+    items.sort((a, b) => {
+      if (sort === "name") return asText(a.name).localeCompare(asText(b.name));
+      if (sort === "sources") return asNum(b.sourceCount) - asNum(a.sourceCount);
+      const aDate = sort === "created" ? asText(a.createdAt) : asText(a.updatedAt);
+      const bDate = sort === "created" ? asText(b.createdAt) : asText(b.updatedAt);
+      return (bDate || "").localeCompare(aDate || "");
+    });
+    return items;
+  }, [bases, filter, search, sort]);
 
-  async function askBase() {
-    if (!activeBase || !question.trim()) return;
-    setSaving(true);
-    setError("");
-    setAnswer(null);
-    try {
-      const result = await api.askKnowledgeBase(asText(activeBase.id), { question: question.trim() });
-      setAnswer(result.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "知识库问答失败");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const sourceChoices = sourceType === "file" ? files : sourceType === "document" ? documents : [];
+  const totalSources = bases.reduce((s, b) => s + asNum(b.sourceCount), 0);
+  const totalChunks = bases.reduce((s, b) => s + asNum(b.chunkCount), 0);
+  const latestUpdate = bases.length ? (() => {
+    const dates = bases.map((b) => asText(b.updatedAt)).filter(Boolean).sort().reverse();
+    return dates[0] ? format(parseISO(dates[0])) : "—";
+  })() : "—";
 
   return (
-    <WorkspaceShell
-      active="知识库"
-      title="知识库"
-      subtitle="新建知识库、登记文件和文档来源，让序光自动切片、向量化，并支持带引用来源的知识问答。"
+    <WorkspaceShell active="知识库" title="知识库" subtitle="把文件、文档、文本和网页资料整理成可问答的知识来源。"
       actions={
-        <>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" />
-            新建知识库
-          </Button>
-          <Button variant="secondary" onClick={() => setSourceOpen(true)} disabled={!activeBase}>
-            <Upload className="h-4 w-4" />
-            登记来源
-          </Button>
-        </>
-      }
-      rightPanel={
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <DatabaseZap className="h-6 w-6 text-cyan-500" />
-            <h2 className="text-xl font-black">知识问答预览</h2>
-          </div>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            当前知识库：{asText(activeBase?.name, "未选择")}。问答结果会记录引用来源，后续可进入独立问答页。
-          </p>
-          <textarea
-            className="mt-5 min-h-28 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="围绕知识库提问"
-          />
-          <Button className="mt-3 w-full" disabled={saving || !activeBase} onClick={askBase}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            提问
-          </Button>
-          {answer ? (
-            <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-700">
-              {asText(answer.answer, asText(answer.content, "已生成回答。"))}
-              {Array.isArray(answer.citations) && answer.citations.length > 0 ? (
-                <div className="mt-4 space-y-2 border-t border-slate-200 pt-3">
-                  {(answer.citations as RecordMap[]).slice(0, 3).map((citation, index) => (
-                    <div key={index} className="rounded-xl bg-white px-3 py-2 text-xs text-slate-500">
-                      引用 {index + 1}：{asText(citation.title, "知识片段")}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+        <Button onClick={() => { setCreateOpen(true); setFormTouched(false); }}><Plus className="h-4 w-4" />新建知识库</Button>
       }
     >
-      <div className="space-y-6">
-        {(error || notice) && (
-          <div
-            className={`rounded-2xl border px-4 py-3 text-sm ${
-              error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
-            }`}
-          >
-            {error || notice}
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          ["知识库", String(bases.length), "个"],
+          ["资料来源", String(totalSources), "个"],
+          ["已处理片段", String(totalChunks), "个"],
+          ["最近更新", latestUpdate, ""],
+        ].map(([label, value, unit]) => (
+          <div key={label} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs text-slate-400">{label}</p>
+            <p className="mt-1 text-xl font-bold text-slate-950">{value}</p>
+            {unit && <p className="text-[11px] text-slate-400">{unit}</p>}
           </div>
-        )}
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            ["知识库", String(bases.length), "沉淀团队资料、制度和项目经验"],
-            ["资料来源", String(sources.length), "文件、文档和手动来源可统一索引"],
-            ["知识片段", String(bases.reduce((sum, item) => sum + asNumber(item.chunkCount), 0)), "切片后支持语义检索和问答"],
-          ].map(([label, value, helper]) => (
-            <div key={label} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-slate-500">{label}</p>
-              <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
-              <p className="mt-2 text-sm text-slate-500">{helper}</p>
-            </div>
-          ))}
-        </div>
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h2 className="text-2xl font-black">全部知识库</h2>
-            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:w-80">
-              <Search className="h-4 w-4 shrink-0 text-slate-400" />
-              <input
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="搜索知识库"
-              />
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="mt-6 rounded-2xl bg-slate-50 p-8 text-sm text-slate-500">正在加载知识库...</div>
-          ) : filteredBases.length === 0 ? (
-            <div className="mt-6 rounded-2xl bg-slate-50 p-8 text-sm text-slate-500">还没有知识库，点击“新建知识库”开始创建。</div>
-          ) : (
-            <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredBases.map((base, index) => {
-                const selected = asText(activeBase?.id) === asText(base.id);
-                return (
-                  <article
-                    key={asText(base.id, String(index))}
-                    className={`overflow-hidden rounded-3xl border bg-white shadow-sm transition ${
-                      selected ? "border-blue-300 ring-4 ring-blue-100" : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
-                    }`}
-                  >
-                    <button className="block w-full text-left" onClick={() => setActiveBaseId(asText(base.id))} type="button">
-                      <div className={`min-h-40 bg-gradient-to-br ${coverColors[index % coverColors.length]} p-6 text-white`}>
-                        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-                          {visibilityLabel(base.visibility)}
-                        </span>
-                        <h3 className="mt-12 text-2xl font-black">{asText(base.name, "未命名知识库")}</h3>
-                      </div>
-                    </button>
-                    <div className="p-5">
-                      <p className="min-h-12 text-sm leading-6 text-slate-600">{asText(base.description, "用于沉淀文档、文件和团队经验。")}</p>
-                      <p className="mt-4 text-xs text-slate-500">
-                        {asNumber(base.sourceCount)} 个资料来源 · {asNumber(base.chunkCount)} 个知识片段
-                      </p>
-                      <div className="mt-5 flex gap-3">
-                        <Button size="sm" variant="secondary" onClick={() => setSourceOpen(true)}>
-                          登记来源
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setSettingsBase(base)}>
-                          <Settings className="h-4 w-4" />
-                          设置
-                        </Button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-cyan-500" />
-            <div>
-              <h2 className="text-2xl font-black">资料来源</h2>
-              <p className="mt-1 text-sm text-slate-500">展示当前选中知识库的文件、文档和手动来源。</p>
-            </div>
-          </div>
-          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
-            {sources.length === 0 ? (
-              <div className="p-6 text-sm text-slate-500">当前知识库还没有资料来源。</div>
-            ) : (
-              sources.map((source, index) => (
-                <div key={index} className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm last:border-b-0 md:grid-cols-[140px_minmax(0,1fr)_180px]">
-                  <span className="font-semibold text-slate-950">{sourceLabel(source)}</span>
-                  <span className="min-w-0 truncate text-slate-600">{asText(source.title, asText(source.sourceId, "手动登记"))}</span>
-                  <span className="text-slate-400">{asText(source.status, "indexed")}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+        ))}
       </div>
 
-      <AppModal
-        open={createOpen}
-        title="完善知识库信息"
-        description="创建前先填写名称、简介和可见范围，避免默认生成一堆“新知识库”。"
-        onClose={() => setCreateOpen(false)}
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setCreateOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={createBase} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              创建
-            </Button>
-          </div>
-        }
-      >
-        <div className="grid gap-5">
-          <label className="grid gap-2 text-sm font-semibold text-white">
-            名称 *
-            <Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="例如：AI 技术资料库" />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-white">
-            简介
-            <textarea
-              className="min-h-28 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm text-white outline-none focus:border-cyan-300"
-              value={form.description}
-              onChange={(event) => setForm({ ...form, description: event.target.value })}
-              placeholder="说明这个知识库保存什么资料"
-            />
-          </label>
-          <div className="grid gap-3 text-sm font-semibold text-white">
-            可见范围 *
-            {visibilityOptions.map((option) => (
-              <label key={option.value} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-                <input
-                  type="radio"
-                  value={option.value}
-                  checked={form.visibility === option.value}
-                  onChange={() => setForm({ ...form, visibility: option.value })}
-                />
-                {option.label}
-              </label>
-            ))}
+      {/* Filters */}
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-[200px] max-w-sm relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input placeholder="搜索知识库" value={search} onChange={(e) => setSearch(e.target.value)}
+            className="h-10 border-slate-200 bg-white pl-10 text-sm" />
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {(["全部", "私有", "成员可见", "公开", "已停用"] as Filter[]).map((f) => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${filter === f ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}>{f}</button>
+          ))}
+        </div>
+        <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}
+          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 outline-none">
+          <option value="updated">最近更新</option>
+          <option value="created">创建时间</option>
+          <option value="sources">资料数量</option>
+          <option value="name">名称</option>
+        </select>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div className="mt-12 flex flex-col items-center text-center"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /><p className="mt-3 text-sm text-slate-500">加载知识库...</p></div>
+      ) : filtered.length === 0 ? (
+        <div className="mt-12 flex flex-col items-center text-center py-16">
+          <Database className="h-10 w-10 text-slate-300" />
+          <h3 className="mt-4 font-bold text-slate-500">还没有知识库</h3>
+          <p className="mt-1 text-sm text-slate-400">创建知识库后，你可以添加文件、文档、文本或链接，让 AI 基于这些资料回答问题。</p>
+          <div className="mt-4 flex gap-2">
+            <Button onClick={() => { setCreateOpen(true); setFormTouched(false); }}><Plus className="h-4 w-4" />新建知识库</Button>
           </div>
         </div>
-      </AppModal>
+      ) : (
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((b) => {
+            const vis = asText(b.visibility, "private");
+            const st = asText(b.status, "active");
+            return (
+              <div key={asText(b.id)} className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-950 truncate">{asText(b.name, "未命名")}</h3>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500"
+                        title={visibilityHint[vis]}>{visibilityLabel[vis] || vis}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 line-clamp-2">{asText(b.description, "整理资料，让 AI 基于内容回答。")}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-4 text-xs text-slate-400">
+                  <span>{asNum(b.sourceCount)} 个来源</span>
+                  <span>{asNum(b.chunkCount)} 个片段</span>
+                  {st !== "active" && <span className="text-amber-600">{statusLabel[st] || st}</span>}
+                </div>
+                <div className="mt-1 text-[11px] text-slate-400">
+                  {asText(b.updatedAt) ? formatDistanceToNow(parseISO(asText(b.updatedAt))) : "—"}
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <Button size="sm" asChild><Link href={`/knowledge/${asText(b.id)}`}>打开</Link></Button>
+                  <Button size="sm" variant="secondary" asChild>
+                    <Link href={`/knowledge/${asText(b.id)}?tab=sources&add=true`}>添加资料</Link>
+                  </Button>
+                  <button title="删除" onClick={() => openDeleteModal(b)}
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:border-red-200 hover:text-red-500">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-      <AppModal
-        open={sourceOpen}
-        title="登记资料来源"
-        description="把云盘文件、在线文档或手动来源加入当前知识库。"
-        onClose={() => setSourceOpen(false)}
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setSourceOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={addSource} disabled={saving || !activeBase}>
-              登记来源
-            </Button>
-          </div>
-        }
-      >
-        <div className="grid gap-5">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              ["file", "文件", "把云盘文件解析后加入知识库"],
-              ["document", "文档", "把在线文档加入知识库"],
-              ["manual", "手动来源", "登记外部资料名称或链接"],
-            ].map(([value, label, helper]) => (
-              <button
-                key={value}
-                className={`rounded-2xl border p-4 text-left transition ${
-                  sourceType === value ? "border-cyan-300 bg-cyan-300/10" : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]"
-                }`}
-                onClick={() => {
-                  setSourceType(value as "file" | "document" | "manual");
-                  setSourceId("");
-                }}
-                type="button"
-              >
-                <p className="font-bold text-white">{label}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-400">{helper}</p>
+      {/* Create modal — light theme */}
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) { setCreateOpen(false); setFormTouched(false); } }}
+          onKeyDown={(e) => { if (e.key === "Escape") { setCreateOpen(false); setFormTouched(false); } }}>
+          <div className="w-full max-w-[480px] rounded-[24px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(0,0,0,0.08)]">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 px-7 pt-7 pb-5">
+              <div>
+                <h2 className="text-xl font-extrabold tracking-tight text-slate-950">新建知识库</h2>
+                <p className="mt-1.5 text-sm leading-6 text-slate-500">
+                  创建一个知识库，用来整理文件、文档、文本或链接，方便后续检索和问答。
+                </p>
+              </div>
+              <button onClick={() => { setCreateOpen(false); setFormTouched(false); }}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+                <X className="h-4 w-4" />
               </button>
-            ))}
-          </div>
-          {sourceType === "manual" ? (
-            <Input value={sourceId} onChange={(event) => setSourceId(event.target.value)} placeholder="输入资料名称或链接" />
-          ) : (
-            <select
-              className="h-12 rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-sm text-white outline-none"
-              value={sourceId}
-              onChange={(event) => setSourceId(event.target.value)}
-            >
-              <option value="">请选择</option>
-              {sourceChoices.map((item) => (
-                <option key={asText(item.id)} value={asText(item.id)}>
-                  {asText(item.name, asText(item.title, "未命名资料"))}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      </AppModal>
+            </div>
 
-      <AppModal
-        open={Boolean(settingsBase)}
-        title="知识库设置"
-        description="调整基础信息、可见范围和后续成员权限入口。"
-        onClose={() => setSettingsBase(null)}
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setSettingsBase(null)}>
-              取消
-            </Button>
-            <Button onClick={saveSettings} disabled={saving}>
-              保存设置
-            </Button>
-          </div>
-        }
-      >
-        {settingsBase ? (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="grid gap-5">
-              <label className="grid gap-2 text-sm font-semibold text-white">
-                名称
-                <Input
-                  value={asText(settingsBase.name)}
-                  onChange={(event) => setSettingsBase({ ...settingsBase, name: event.target.value })}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-semibold text-white">
-                简介
-                <textarea
-                  className="min-h-40 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm text-white outline-none focus:border-cyan-300"
-                  value={asText(settingsBase.description)}
-                  onChange={(event) => setSettingsBase({ ...settingsBase, description: event.target.value })}
-                />
-              </label>
-              <div className="grid gap-3 text-sm font-semibold text-white">
-                可见范围
-                {visibilityOptions.map((option) => (
-                  <label key={option.value} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-                    <input
-                      type="radio"
-                      value={option.value}
-                      checked={asText(settingsBase.visibility, "private") === option.value}
-                      onChange={() => setSettingsBase({ ...settingsBase, visibility: option.value })}
-                    />
-                    {option.label}
-                  </label>
-                ))}
+            {/* Form */}
+            <div className="px-7 space-y-5 pb-7">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">知识库名称</label>
+                <input value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setFormTouched(true); }}
+                  placeholder="例如：AI 技术资料、抖音选题库、学习笔记"
+                  className={`w-full h-[48px] rounded-[14px] border px-4 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:ring-4 ${
+                    formTouched && !form.name.trim()
+                      ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-50"
+                      : "border-slate-200 bg-slate-50 focus:border-blue-400 focus:bg-white focus:ring-blue-50"
+                  }`} />
+                {formTouched && !form.name.trim() && (
+                  <p className="mt-1.5 text-xs font-medium text-red-500">这里不能为空</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">简介</label>
+                <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="一句话说明这个知识库的内容和用途"
+                  className="w-full h-[48px] rounded-[14px] border border-slate-200 bg-slate-50 px-4 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">可见范围</label>
+                <div className="flex gap-2">
+                  {Object.entries(visibilityLabel).map(([k, v]) => (
+                    <button key={k} type="button" onClick={() => setForm({ ...form, visibility: k })}
+                      className={`min-w-[90px] flex-1 rounded-[14px] border py-2.5 text-xs font-medium whitespace-nowrap transition ${
+                        form.visibility === k ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      }`}>{v}</button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  {form.visibility === "private" ? "仅自己可见，适合个人资料整理。" :
+                   form.visibility === "workspace" ? "知识库成员可见，适合团队共享。" :
+                   "有权限的用户可访问，适合公开资料。"}
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button onClick={() => { setCreateOpen(false); setFormTouched(false); }}
+                  className="h-[44px] min-w-[80px] rounded-[14px] border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+                  取消
+                </button>
+                <button onClick={createBase}
+                  disabled={saving || !form.name.trim()}
+                  className={`h-[44px] min-w-[120px] whitespace-nowrap rounded-[14px] px-6 text-sm font-semibold transition ${
+                    saving || !form.name.trim()
+                      ? "bg-blue-100 text-blue-300 cursor-not-allowed"
+                      : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+                  }`}>
+                  {saving ? "创建中..." : "创建知识库"}
+                </button>
               </div>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
-              <h3 className="font-black text-white">成员与权限</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-400">
-                当前一期保留入口，后续接入团队成员、角色权限和资料来源审批。
-              </p>
-              <Button className="mt-6 w-full" variant="secondary" onClick={() => setSourceOpen(true)}>
-                登记资料来源
-              </Button>
-            </div>
           </div>
-        ) : null}
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      <AppModal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="确认删除知识库">
+        <p className="text-sm text-slate-600">
+          确定要删除 <strong className="text-red-600">{asText(deleteTarget?.name)}</strong> 吗？此操作不可撤销。
+        </p>
+        <p className="mt-2 text-xs text-slate-400">删除后，知识库中的资料来源、知识片段和问答记录将无法恢复。</p>
+        <div className="mt-5 rounded-xl border border-red-100 bg-red-50/50 p-4">
+          <p className="text-xs font-semibold text-red-700 mb-3">请输入以下文字以确认删除：</p>
+          <div className="mb-3 rounded-lg border border-red-200 bg-white px-3 py-2 text-center">
+            <code className="text-base font-bold tracking-wider text-red-600 select-all">{deleteConfirmCode}{asText(deleteTarget?.name)}</code>
+          </div>
+          <input
+            value={deleteInput}
+            onChange={(e) => setDeleteInput(e.target.value)}
+            placeholder="输入上面的确认文字"
+            className="w-full h-[44px] rounded-[12px] border border-slate-200 bg-white px-4 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-50"
+          />
+        </div>
+        <div className="mt-5 flex gap-3 justify-end">
+          <Button variant="secondary" onClick={() => setDeleteTarget(null)}>取消</Button>
+          <Button
+            onClick={deleteBase}
+            disabled={saving || deleteInput !== expectedDeleteInput}
+            className={deleteInput === expectedDeleteInput ? "bg-red-600 hover:bg-red-700" : "bg-slate-200 text-slate-400 cursor-not-allowed"}
+          >
+            {saving ? "删除中..." : "确认删除"}
+          </Button>
+        </div>
       </AppModal>
     </WorkspaceShell>
   );

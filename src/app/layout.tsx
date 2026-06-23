@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { SiteChrome } from "@/components/layout/site-chrome";
+import { ToastContainer } from "@/components/ui/toast";
 
 import "./globals.css";
 
@@ -16,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "序光 - AI 原生办公平台",
-  description: "上传、管理和处理办公文件，用 AI 聊天、云盘、在线文档和知识库提升个人与团队效率。",
+  title: "序光 - 多模型 AI 平台",
+  description: "一个入口，连接多个 AI 模型。序光支持对话、写作、翻译、编程、分析、文件理解、图像制作和视频创作。",
 };
 
 export default function RootLayout({
@@ -29,6 +30,7 @@ export default function RootLayout({
     <html lang="zh-CN" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SiteChrome>{children}</SiteChrome>
+        <ToastContainer />
       </body>
     </html>
   );

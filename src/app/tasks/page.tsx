@@ -6,6 +6,7 @@ import { CheckCircle2, Clock3, Loader2, Plus, RefreshCw, Workflow, XCircle } fro
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -61,8 +62,6 @@ export default function TasksPage() {
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [taskForm, setTaskForm] = useState({
     title: "总结最近上传文件",
@@ -78,13 +77,12 @@ export default function TasksPage() {
   }, [jobs]);
 
   async function loadJobs() {
-    setError("");
     setLoading(true);
     try {
       const result = await api.listJobs();
       setJobs(result.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "任务加载失败");
+      toast.error(err instanceof Error ? err.message : "任务加载失败");
     } finally {
       setLoading(false);
     }
@@ -100,7 +98,6 @@ export default function TasksPage() {
   async function createTask() {
     if (!taskForm.title.trim()) return;
     setBusy(true);
-    setError("");
     try {
       await api.createJob({
         type: taskForm.type,
@@ -110,10 +107,10 @@ export default function TasksPage() {
         },
       });
       setCreateOpen(false);
-      setNotice("任务已创建，后续可由 Celery/队列持续执行。");
+      toast.success("任务已创建，后续可由 Celery/队列持续执行。");
       await loadJobs();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建任务失败");
+      toast.error(err instanceof Error ? err.message : "创建任务失败");
     } finally {
       setBusy(false);
     }
@@ -121,12 +118,11 @@ export default function TasksPage() {
 
   async function markRunning(job: JobRecord) {
     setBusy(true);
-    setError("");
     try {
       await api.updateJob(asText(job.id), { status: "running", progress: 35 });
       await loadJobs();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "更新任务失败");
+      toast.error(err instanceof Error ? err.message : "更新任务失败");
     } finally {
       setBusy(false);
     }
@@ -150,9 +146,6 @@ export default function TasksPage() {
         </>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-      {notice && <div className="mb-5 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm text-cyan-50">{notice}</div>}
-
       <div className="grid gap-4 md:grid-cols-3">
         {[
           ["运行中", String(stats.running)],

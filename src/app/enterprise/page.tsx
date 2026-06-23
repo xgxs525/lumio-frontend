@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Building2, CreditCard, Database, Globe2, RefreshCw, ShieldCheck, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -24,16 +25,14 @@ function money(value: number) {
 export default function EnterprisePage() {
   const [overview, setOverview] = useState<RecordMap>({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   async function loadOverview() {
     setLoading(true);
-    setError("");
     try {
       const result = await api.enterpriseBillingOverview();
       setOverview(result.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "企业后台数据加载失败");
+      toast.error(err instanceof Error ? err.message : "企业后台数据加载失败");
     } finally {
       setLoading(false);
     }
@@ -75,8 +74,6 @@ export default function EnterprisePage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
           { icon: Building2, label: "工作区", value: asNumber(overview.workspaceCount) },

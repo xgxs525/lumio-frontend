@@ -6,6 +6,7 @@ import { ArrowLeft, Building2, Loader2, Save, Settings2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -20,11 +21,8 @@ export default function WorkspaceSettingsPage() {
   const [form, setForm] = useState({ name: "", locale: "zh-CN", timezone: "Asia/Shanghai" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
   async function loadWorkspace() {
-    setError("");
     setLoading(true);
     try {
       const result = await api.currentWorkspace();
@@ -35,7 +33,7 @@ export default function WorkspaceSettingsPage() {
         timezone: text(result.data.workspace.timezone, "Asia/Shanghai"),
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "工作空间加载失败");
+      toast.error(err instanceof Error ? err.message : "工作空间加载失败");
     } finally {
       setLoading(false);
     }
@@ -47,8 +45,6 @@ export default function WorkspaceSettingsPage() {
 
   async function saveWorkspace() {
     setSaving(true);
-    setError("");
-    setNotice("");
     try {
       const result = await api.updateCurrentWorkspace({
         name: form.name.trim(),
@@ -56,9 +52,9 @@ export default function WorkspaceSettingsPage() {
         timezone: form.timezone,
       });
       setWorkspace(result.data.workspace);
-      setNotice("工作空间设置已保存。");
+      toast.success("工作空间设置已保存。");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存失败");
+      toast.error(err instanceof Error ? err.message : "保存失败");
     } finally {
       setSaving(false);
     }
@@ -88,9 +84,6 @@ export default function WorkspaceSettingsPage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
-      {notice && <div className="mb-5 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-800">{notice}</div>}
-
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         {loading ? (
           <div className="py-16 text-center text-sm text-slate-500">

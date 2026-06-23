@@ -6,6 +6,7 @@ import { Bell, Database, KeyRound, ShieldAlert, Smartphone, User } from "lucide-
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 import {
@@ -33,8 +34,6 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   function syncAuth() {
     const stored = getStoredAuth();
@@ -57,8 +56,6 @@ export default function SettingsPage() {
   async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSavingProfile(true);
-    setError(null);
-    setMessage(null);
     try {
       const result = await api.updateProfile({
         name,
@@ -68,9 +65,9 @@ export default function SettingsPage() {
         timezone: "Asia/Shanghai",
       });
       updateStoredIdentity(result.data);
-      setMessage("个人资料已保存");
+      toast.success("个人资料已保存");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存资料失败");
+      toast.error(err instanceof Error ? err.message : "保存资料失败");
     } finally {
       setSavingProfile(false);
     }
@@ -79,15 +76,13 @@ export default function SettingsPage() {
   async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSavingPassword(true);
-    setError(null);
-    setMessage(null);
     try {
       await api.updatePassword({ currentPassword, newPassword });
       setCurrentPassword("");
       setNewPassword("");
-      setMessage("密码已修改，下次登录请使用新密码");
+      toast.success("密码已修改，下次登录请使用新密码");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "修改密码失败");
+      toast.error(err instanceof Error ? err.message : "修改密码失败");
     } finally {
       setSavingPassword(false);
     }
@@ -95,8 +90,6 @@ export default function SettingsPage() {
 
   async function handleDeleteAccount() {
     setDeleting(true);
-    setError(null);
-    setMessage(null);
     try {
       await api.deleteAccount({
         confirmation,
@@ -105,7 +98,7 @@ export default function SettingsPage() {
       clearStoredAuth();
       router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "注销账号失败");
+      toast.error(err instanceof Error ? err.message : "注销账号失败");
     } finally {
       setDeleting(false);
     }
@@ -136,16 +129,6 @@ export default function SettingsPage() {
         </aside>
 
         <div className="min-w-0 space-y-6">
-          {(message || error) && (
-            <div
-              className={`rounded-2xl border px-4 py-3 text-sm ${
-                error ? "border-red-300/25 bg-red-500/10 text-red-100" : "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
-              }`}
-            >
-              {error || message}
-            </div>
-          )}
-
           <section id="个人资料" className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
             <div className="mb-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">

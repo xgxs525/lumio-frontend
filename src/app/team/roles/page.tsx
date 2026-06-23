@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Plus, Save, ShieldCheck, Trash2 } from "lucide-reac
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -33,8 +34,6 @@ export default function RolesPage() {
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
   const selected = roles.find((item) => text(item.id) === selectedId);
   const groupedPermissions = useMemo(() => {
@@ -47,7 +46,6 @@ export default function RolesPage() {
   }, [permissions]);
 
   async function loadRoles(nextId?: string) {
-    setError("");
     setLoading(true);
     try {
       const [roleResult, permissionResult] = await Promise.all([api.listRoles(), api.listPermissions()]);
@@ -56,7 +54,7 @@ export default function RolesPage() {
       const role = roleResult.data.find((item) => text(item.id) === nextId) || roleResult.data[0];
       if (role) selectRole(role);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "角色权限加载失败");
+      toast.error(err instanceof Error ? err.message : "角色权限加载失败");
     } finally {
       setLoading(false);
     }
@@ -71,8 +69,6 @@ export default function RolesPage() {
     setSelectedId(text(role.id));
     setForm({ name: text(role.name), code: text(role.code), description: text(role.description) });
     setChecked(rolePermissionCodes(role));
-    setNotice("");
-    setError("");
   }
 
   function startCreate() {
@@ -89,11 +85,10 @@ export default function RolesPage() {
   async function saveRole() {
     if (!form.name.trim()) return;
     setSaving(true);
-    setError("");
     try {
       if (creating) {
         if (!form.code.trim()) {
-          setError("请填写角色编码。");
+          toast.error("请填写角色编码。");
           return;
         }
         const result = await api.createRole({
@@ -102,7 +97,7 @@ export default function RolesPage() {
           description: form.description.trim() || undefined,
           permission_codes: checked,
         });
-        setNotice("角色已创建。");
+        toast.success("角色已创建。");
         await loadRoles(text(result.data.id));
       } else if (selectedId) {
         const result = await api.updateRole(selectedId, {
@@ -110,11 +105,11 @@ export default function RolesPage() {
           description: form.description.trim(),
           permission_codes: checked,
         });
-        setNotice("角色已保存。");
+        toast.success("角色已保存。");
         await loadRoles(text(result.data.id));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存角色失败");
+      toast.error(err instanceof Error ? err.message : "保存角色失败");
     } finally {
       setSaving(false);
     }
@@ -127,10 +122,10 @@ export default function RolesPage() {
     setSaving(true);
     try {
       await api.deleteRole(selectedId);
-      setNotice("角色已删除。");
+      toast.success("角色已删除。");
       await loadRoles();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "删除角色失败");
+      toast.error(err instanceof Error ? err.message : "删除角色失败");
     } finally {
       setSaving(false);
     }
@@ -165,9 +160,6 @@ export default function RolesPage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-      {notice && <div className="mb-5 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm text-cyan-50">{notice}</div>}
-
       <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
         <section className="min-w-0 rounded-3xl border border-white/10 bg-white/[0.06] p-5">
           <div className="grid gap-3">

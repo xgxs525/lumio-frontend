@@ -6,6 +6,7 @@ import { ArrowLeft, Building2, Loader2, Plus, Save, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -29,13 +30,10 @@ export default function DepartmentsPage() {
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
   const selected = departments.find((item) => text(item.id) === selectedId);
 
   async function loadDepartments(nextId?: string) {
-    setError("");
     setLoading(true);
     try {
       const result = await api.listDepartments();
@@ -44,7 +42,7 @@ export default function DepartmentsPage() {
       setSelectedId(firstId);
       setName(text(result.data.find((item) => text(item.id) === firstId)?.name, text(result.data[0]?.name)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "部门加载失败");
+      toast.error(err instanceof Error ? err.message : "部门加载失败");
     } finally {
       setLoading(false);
     }
@@ -57,8 +55,6 @@ export default function DepartmentsPage() {
   function selectDepartment(item: RecordMap) {
     setSelectedId(text(item.id));
     setName(text(item.name));
-    setNotice("");
-    setError("");
   }
 
   async function createDepartment() {
@@ -67,10 +63,10 @@ export default function DepartmentsPage() {
     try {
       const result = await api.createDepartment({ name: newName.trim() });
       setNewName("");
-      setNotice("部门已创建。");
+      toast.success("部门已创建。");
       await loadDepartments(text(result.data.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建部门失败");
+      toast.error(err instanceof Error ? err.message : "创建部门失败");
     } finally {
       setSaving(false);
     }
@@ -81,10 +77,10 @@ export default function DepartmentsPage() {
     setSaving(true);
     try {
       const result = await api.updateDepartment(selectedId, { name: name.trim() });
-      setNotice("部门已保存。");
+      toast.success("部门已保存。");
       await loadDepartments(text(result.data.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存部门失败");
+      toast.error(err instanceof Error ? err.message : "保存部门失败");
     } finally {
       setSaving(false);
     }
@@ -97,10 +93,10 @@ export default function DepartmentsPage() {
     setSaving(true);
     try {
       await api.deleteDepartment(selectedId);
-      setNotice("部门已删除。");
+      toast.success("部门已删除。");
       await loadDepartments();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "删除部门失败");
+      toast.error(err instanceof Error ? err.message : "删除部门失败");
     } finally {
       setSaving(false);
     }
@@ -129,9 +125,6 @@ export default function DepartmentsPage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-      {notice && <div className="mb-5 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm text-cyan-50">{notice}</div>}
-
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <section className="min-w-0 rounded-3xl border border-white/10 bg-white/[0.06] p-5">
           <div className="mb-4 flex gap-2">

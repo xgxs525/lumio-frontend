@@ -51,7 +51,7 @@ export function AppModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-[80] isolate flex items-center justify-center overflow-hidden overscroll-contain bg-slate-950/72 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[80] isolate flex items-center justify-center overflow-hidden overscroll-contain bg-black/40 backdrop-blur-sm p-3 sm:p-4"
       role="dialog"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -59,26 +59,26 @@ export function AppModal({
     >
       <div
         className={cn(
-          "flex max-h-[calc(100dvh-24px)] w-full flex-col overflow-hidden overscroll-contain rounded-3xl border border-white/10 bg-[#0b1630] shadow-[0_32px_100px_rgba(0,0,0,0.45)] sm:max-h-[calc(100dvh-40px)]",
+          "flex max-h-[calc(100dvh-24px)] w-full flex-col overflow-hidden overscroll-contain rounded-[24px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(0,0,0,0.08)] sm:max-h-[calc(100dvh-40px)]",
           sizeClass[size],
         )}
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6 sm:py-5">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-6 pt-6 pb-5">
           <div className="min-w-0">
-            <h2 className="text-2xl font-black tracking-tight text-white">{title}</h2>
-            {description && <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>}
+            <h2 className="text-xl font-extrabold tracking-tight text-slate-950">{title}</h2>
+            {description && <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p>}
           </div>
           <button
             aria-label="Close"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white/[0.06] text-slate-300 transition hover:bg-white/[0.1] hover:text-white"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
             onClick={onClose}
             type="button"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5", contentClassName)}>{children}</div>
-        {footer && <div className="shrink-0 border-t border-white/10 bg-slate-950/25 px-5 py-3 sm:px-6 sm:py-4">{footer}</div>}
+        <div className={cn("min-h-0 flex-1 overflow-y-auto px-6 py-5", contentClassName)}>{children}</div>
+        {footer && <div className="shrink-0 border-t border-slate-100 bg-slate-50/50 px-6 py-4">{footer}</div>}
       </div>
     </div>
   );

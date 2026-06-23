@@ -61,6 +61,12 @@ async function fetchWithTimeout(url: string, init?: RequestInit) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error("接口响应超时，请稍后重试");
     }
+    // Catch "Failed to fetch" network errors and provide a helpful message
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error(
+        `无法连接到服务器 (${API_BASE})，请确认后端服务已启动。`,
+      );
+    }
     throw error;
   } finally {
     globalThis.clearTimeout(timeout);
@@ -525,6 +531,12 @@ export const api = {
       method: "POST",
     }),
 
+  deleteKnowledgeBase: (knowledgeBaseId: string) =>
+    request<{ success: boolean }>(`/knowledge-bases/${knowledgeBaseId}`, { method: "DELETE" }),
+
+  deleteKnowledgeSource: (knowledgeBaseId: string, sourceId: string) =>
+    request<{ success: boolean }>(`/knowledge-bases/${knowledgeBaseId}/sources/${sourceId}`, { method: "DELETE" }),
+
   askKnowledgeBase: (knowledgeBaseId: string, payload: { question: string }) =>
     request<ApiResponse<Record<string, unknown>>>(`/knowledge-bases/${knowledgeBaseId}/ask`, {
       method: "POST",
@@ -555,6 +567,16 @@ export const api = {
 
   listAIMessages: (conversationId: string) =>
     request<ApiResponse<Array<Record<string, unknown>>>>(`/ai/conversations/${conversationId}/messages`),
+
+  updateAIConversation: (conversationId: string, payload: Record<string, unknown>) =>
+    request<ApiResponse<Record<string, unknown>>>(`/ai/conversations/${conversationId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+
+  deleteAIConversation: (conversationId: string) =>
+    request<{ success: boolean }>(`/ai/conversations/${conversationId}`, { method: "DELETE" }),
 
   uploadFile: async (file: File) => {
     const form = new FormData();
@@ -594,7 +616,7 @@ export const api = {
 
   chat: (
     messages: { role: string; content: string }[],
-    options?: { conversationId?: string; sourceType?: string; sourceId?: string; title?: string },
+    options?: { conversationId?: string; sourceType?: string; sourceId?: string; title?: string; model?: string },
   ) =>
     request<{
       success: boolean;

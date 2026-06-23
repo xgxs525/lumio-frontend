@@ -5,6 +5,7 @@ import { CreditCard, Globe2, Loader2, RefreshCw, ShieldCheck, Sparkles, Users } 
 
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -75,7 +76,6 @@ export default function BillingPage() {
   const [checkout, setCheckout] = useState<RecordMap | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const plan = nested(current, "plan");
   const usage = nested(current, "usage");
@@ -87,7 +87,6 @@ export default function BillingPage() {
 
   async function loadBilling() {
     setLoading(true);
-    setError("");
     try {
       const [currentResult, planResult, orderResult, providerResult] = await Promise.all([
         api.billingCurrent(),
@@ -101,7 +100,7 @@ export default function BillingPage() {
       setProviders(providerResult.data);
       setProvider((old) => (providerResult.data.some((item) => asText(item.code) === old) ? old : asText(providerResult.data[0]?.code, "mock_cn")));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "账单数据加载失败");
+      toast.error(err instanceof Error ? err.message : "账单数据加载失败");
     } finally {
       setLoading(false);
     }
@@ -116,7 +115,6 @@ export default function BillingPage() {
 
   async function upgrade(planCode: string) {
     setSaving(true);
-    setError("");
     try {
       const result = await api.createBillingCheckout({
         plan_code: planCode,
@@ -129,7 +127,7 @@ export default function BillingPage() {
       setCheckout(result.data);
       await loadBilling();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建订单失败");
+      toast.error(err instanceof Error ? err.message : "创建订单失败");
     } finally {
       setSaving(false);
     }
@@ -139,13 +137,12 @@ export default function BillingPage() {
     const orderNo = asText((checkout?.order as RecordMap | undefined)?.orderNo);
     if (!orderNo) return;
     setSaving(true);
-    setError("");
     try {
       const result = await api.completeMockPayment(orderNo);
       setCheckout({ ...checkout, ...result.data });
       await loadBilling();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "支付确认失败");
+      toast.error(err instanceof Error ? err.message : "支付确认失败");
     } finally {
       setSaving(false);
     }
@@ -191,8 +188,6 @@ export default function BillingPage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)]">
         <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">

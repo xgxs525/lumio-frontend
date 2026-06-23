@@ -200,3 +200,19 @@ select {
   color: #0f172a !important;
 }
 
+/* ── Marquee animation for AI model showcase ── */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation-name: marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+

@@ -22,6 +22,7 @@ import {
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -78,8 +79,6 @@ export default function DrivePage() {
   const [files, setFiles] = useState<DriveRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedType, setSelectedType] = useState(fileTypes[0]);
   const [name, setName] = useState("");
@@ -92,7 +91,6 @@ export default function DrivePage() {
   const [shareResult, setShareResult] = useState<DriveRecord | null>(null);
 
   async function loadDrive() {
-    setError("");
     setLoading(true);
     try {
       const [overviewResult, folderResult, fileResult] = await Promise.all([
@@ -104,7 +102,7 @@ export default function DrivePage() {
       setFolders(folderResult.data);
       setFiles(fileResult.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "云盘数据加载失败");
+      toast.error(err instanceof Error ? err.message : "云盘数据加载失败");
     } finally {
       setLoading(false);
     }
@@ -120,7 +118,6 @@ export default function DrivePage() {
   async function handleCreate() {
     if (!name.trim()) return;
     setBusy(true);
-    setError("");
     try {
       if (selectedType.label === "文件夹") {
         await api.createDriveFolder(name.trim());
@@ -135,10 +132,10 @@ export default function DrivePage() {
       setName("");
       setSelectedType(fileTypes[0]);
       setIsCreateOpen(false);
-      setNotice("创建成功，已保存到当前工作空间。");
+      toast.success("创建成功，已保存到当前工作空间。");
       await loadDrive();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建失败");
+      toast.error(err instanceof Error ? err.message : "创建失败");
     } finally {
       setBusy(false);
     }
@@ -147,13 +144,12 @@ export default function DrivePage() {
   async function handleUpload(file?: File) {
     if (!file) return;
     setBusy(true);
-    setError("");
     try {
       await api.uploadDriveFile(file);
-      setNotice("上传成功，文件已进入云盘并可用于 AI 处理。");
+      toast.success("上传成功，文件已进入云盘并可用于 AI 处理。");
       await loadDrive();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "上传失败");
+      toast.error(err instanceof Error ? err.message : "上传失败");
     } finally {
       setBusy(false);
       if (uploadRef.current) uploadRef.current.value = "";
@@ -162,12 +158,11 @@ export default function DrivePage() {
 
   async function handlePreview(fileId: string) {
     setBusy(true);
-    setError("");
     try {
       const result = await api.previewDriveFile(fileId);
       setPreview(result.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "预览失败");
+      toast.error(err instanceof Error ? err.message : "预览失败");
     } finally {
       setBusy(false);
     }
@@ -175,13 +170,12 @@ export default function DrivePage() {
 
   async function handleDelete(fileId: string) {
     setBusy(true);
-    setError("");
     try {
       await api.deleteDriveFile(fileId);
-      setNotice("文件已删除。");
+      toast.success("文件已删除。");
       await loadDrive();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "删除失败");
+      toast.error(err instanceof Error ? err.message : "删除失败");
     } finally {
       setBusy(false);
     }
@@ -189,7 +183,6 @@ export default function DrivePage() {
 
   async function handleDownload(fileId: string) {
     setBusy(true);
-    setError("");
     try {
       const result = await api.downloadDriveFile(fileId);
       const url = URL.createObjectURL(result.blob);
@@ -201,7 +194,7 @@ export default function DrivePage() {
       link.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "下载失败");
+      toast.error(err instanceof Error ? err.message : "下载失败");
     } finally {
       setBusy(false);
     }
@@ -218,7 +211,6 @@ export default function DrivePage() {
     if (!aiFile) return;
     const fileId = asText(aiFile.id);
     setBusy(true);
-    setError("");
     try {
       const result =
         mode === "index"
@@ -230,10 +222,10 @@ export default function DrivePage() {
               : await api.askDriveFileAsync(fileId, { question });
       setAiResult(result.data);
       const job = (result.data.job || {}) as Record<string, unknown>;
-      setNotice(`文件 AI 异步任务已提交${asText(job.id) ? `，任务 ID：${asText(job.id)}` : ""}。可到任务中心查看状态。`);
+      toast.success(`文件 AI 异步任务已提交${asText(job.id) ? `，任务 ID：${asText(job.id)}` : ""}。可到任务中心查看状态。`);
       if (mode === "clean") await loadDrive();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "文件 AI 处理失败");
+      toast.error(err instanceof Error ? err.message : "文件 AI 处理失败");
     } finally {
       setBusy(false);
     }
@@ -247,16 +239,15 @@ export default function DrivePage() {
   async function createShareLink() {
     if (!shareFile) return;
     setBusy(true);
-    setError("");
     try {
       const result = await api.createFileShare(asText(shareFile.id), {
         share_type: "link",
         permission: "view",
       });
       setShareResult(result.data);
-      setNotice("文件分享链接已生成。");
+      toast.success("文件分享链接已生成。");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建分享链接失败");
+      toast.error(err instanceof Error ? err.message : "创建分享链接失败");
     } finally {
       setBusy(false);
     }
@@ -267,7 +258,7 @@ export default function DrivePage() {
     if (!raw) return;
     const url = raw.startsWith("http") ? raw : `${window.location.origin}${raw}`;
     await navigator.clipboard.writeText(url);
-    setNotice("分享链接已复制。");
+    toast.info("分享链接已复制。");
   }
 
   const storageUsed = asNumber(overview.storageUsed);
@@ -329,9 +320,6 @@ export default function DrivePage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-      {notice && <div className="mb-5 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm text-cyan-50">{notice}</div>}
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["全部文件", String(asNumber(overview.fileCount))],

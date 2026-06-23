@@ -2,10 +2,10 @@ import Link from "next/link";
 import {
   ArrowRight,
   Bot,
-  Cloud,
-  DatabaseZap,
-  FileText,
-  HardDrive,
+  Brain,
+  FileSearch,
+  Film,
+  ImageIcon,
   MessageSquareText,
   Sparkles,
   Upload,
@@ -14,49 +14,123 @@ import {
 import { Button } from "@/components/ui/button";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 
-const quickActions = [
-  { href: "/drive", icon: Upload, title: "上传文件", description: "上传 PDF、表格、文档、PPT、图片等资料，让 AI 读取与处理。" },
-  { href: "/docs", icon: FileText, title: "新建文档", description: "从空白文档开始写作、总结、改写或沉淀团队资料。" },
-  { href: "/ai", icon: Bot, title: "询问 AI", description: "围绕工作区文件和知识库直接提问，快速得到可执行答案。" },
-  { href: "/knowledge", icon: DatabaseZap, title: "创建知识库", description: "把 SOP、制度、项目资料变成可检索、可问答的知识资产。" },
+const taskCards = [
+  {
+    href: "/ai",
+    icon: Bot,
+    color: "bg-blue-50 text-blue-600",
+    title: "智能任务",
+    desc: "选择模型或使用智能推荐，完成写作、翻译、编程、分析等任务。",
+  },
+  {
+    href: "/file-understand",
+    icon: FileSearch,
+    color: "bg-emerald-50 text-emerald-600",
+    title: "文件理解",
+    desc: "上传 PDF、Word、表格或图片，让 AI 总结、分析和提取重点。",
+  },
+  {
+    href: "/image-gen",
+    icon: ImageIcon,
+    color: "bg-violet-50 text-violet-600",
+    title: "图像生成",
+    desc: "输入描述，生成封面图、插画、海报或视觉素材。",
+    pending: true,
+  },
+  {
+    href: "/video-gen",
+    icon: Film,
+    color: "bg-amber-50 text-amber-600",
+    title: "视频创作",
+    desc: "生成短视频脚本、分镜、画面提示词和内容方案。",
+    pending: true,
+  },
 ];
 
-const recentFiles = [
-  { name: "Q2 销售复盘.pdf", type: "PDF", time: "今天 10:24", status: "已建立索引" },
-  { name: "客户数据分析表", type: "表格", time: "昨天 18:30", status: "已生成摘要" },
-  { name: "产品发布方案.docx", type: "文档", time: "昨天 11:12", status: "可继续编辑" },
-  { name: "品牌素材包.zip", type: "压缩包", time: "周二 15:06", status: "待分类" },
+const recentTasks = [
+  { title: "总结销售复盘报告", model: "Claude Sonnet 4.6", time: "12 分钟前" },
+  { title: "生成短视频文案", model: "GPT-5.6", time: "今天 09:40" },
+  { title: "解释代码报错", model: "DeepSeek-V4-Pro", time: "昨天 20:18" },
+  { title: "生成封面图提示词", model: "图像生成模型", time: "昨天 18:30" },
 ];
 
-const aiCards = [
-  { title: "总结销售复盘报告", source: "关联 3 个文件", time: "12 分钟前" },
-  { title: "提取客户流失原因", source: "来自客户资料库", time: "今天 09:40" },
-  { title: "生成项目周报初稿", source: "来自项目文档", time: "昨天 20:18" },
+const assetCards = [
+  { href: "/drive", icon: Upload, color: "bg-sky-50 text-sky-600", title: "云盘", desc: "存放 AI 可处理的文件，方便随时调用、分析和总结。" },
+  { href: "/docs", icon: MessageSquareText, color: "bg-rose-50 text-rose-600", title: "文档", desc: "保存 AI 生成或整理后的内容，支持继续编辑和复用。" },
+  { href: "/knowledge", icon: Brain, color: "bg-indigo-50 text-indigo-600", title: "知识库", desc: "沉淀长期资料，让 AI 基于你的内容进行回答。" },
 ];
 
-function AssistantPanel() {
+const stats = [
+  { title: "今日使用", value: "32 次 AI 请求", icon: Sparkles },
+  { title: "剩余额度", value: "3,280 / 5,000", icon: Sparkles },
+  { title: "常用模型", value: "Claude Sonnet 4.6", icon: Bot },
+  { title: "已接入模型", value: "30+ 个模型版本", icon: Bot },
+];
+
+function ModelRecommendCard() {
   return (
-    <div className="sticky top-24 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-100 text-cyan-700">
-          <Bot className="h-6 w-6" />
+    <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-xs font-bold text-white">AI</span>
+        <span className="text-base font-bold text-slate-900">智能模型推荐</span>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-500">
+        输入任务后，序光会根据任务类型、内容长度、是否需要推理、是否涉及代码或文件，推荐更合适的模型。
+      </p>
+      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p className="text-xs font-medium text-slate-400">用户任务</p>
+        <p className="mt-1 text-[13px] leading-6 text-slate-700">
+          帮我总结这份 30 页 PDF，并指出里面的问题。
+        </p>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-semibold text-slate-400">识别为</span>
+        <span className="rounded-full border border-sky-100 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700">文件理解</span>
+        <span className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700">长文本分析</span>
+        <span className="rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">逻辑整理</span>
+      </div>
+      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">推荐模型</p>
+        <p className="mt-0.5 text-sm font-bold text-slate-900">Claude Sonnet 4.6</p>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">GPT-5.6</span>
+        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">DeepSeek-V4-Pro</span>
+        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">Gemini 1.0</span>
+      </div>
+    </div>
+  );
+}
+
+function AIPromptPanel() {
+  const prompts = [
+    "帮我写一段短视频文案",
+    "帮我翻译并润色这段英文",
+    "帮我分析这份 PDF",
+    "帮我生成一张封面图提示词",
+    "帮我解释这段代码",
+    "帮我规划一个视频脚本",
+  ];
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-100 text-blue-700">
+          <Bot className="h-4 w-4" />
         </span>
-        <div className="min-w-0">
-          <p className="truncate font-black text-slate-950">序光助手</p>
-          <p className="text-sm text-slate-500">当前工作空间上下文</p>
-        </div>
+        <span className="text-base font-bold text-slate-900">序光智能任务</span>
       </div>
-      <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-600">
-        我可以帮你总结最近上传的文件、生成项目周报、检查数据异常，或把文档沉淀到知识库。
-      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-500">
+        我可以帮你选择合适的 AI 模型，完成写作、翻译、编程、分析、文件理解、图像生成和视频创作。
+      </p>
       <div className="mt-4 grid gap-2">
-        {["总结最近 7 天新增文件", "生成团队周报", "查看待处理任务"].map((item) => (
-          <button
+        {prompts.map((item) => (
+          <Link
             key={item}
-            className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left text-sm text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-slate-950"
+            href="/ai"
+            className="block rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
           >
             {item}
-          </button>
+          </Link>
         ))}
       </div>
     </div>
@@ -67,105 +141,125 @@ export default function WorkspacePage() {
   return (
     <WorkspaceShell
       active="工作台"
-      title="欢迎回来，进入你的智能工作台"
-      subtitle="集中查看最近文件、AI 会话、任务进度和团队空间状态，让每天的办公任务更有秩序。"
-      rightPanel={<AssistantPanel />}
+      title="开始一个 AI 任务"
+      subtitle="选择模型，或让序光根据任务智能推荐。支持写作、翻译、编程、分析、文件理解、图像生成和视频创作。"
+      rightPanel={
+        <div className="space-y-5">
+          <ModelRecommendCard />
+          <AIPromptPanel />
+        </div>
+      }
       actions={
         <>
           <Button asChild>
+            <Link href="/ai">
+              新建任务
+              <Bot className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button variant="secondary" asChild>
             <Link href="/drive">
               上传文件
               <Upload className="h-4 w-4" />
             </Link>
           </Button>
-          <Button variant="secondary" asChild>
-            <Link href="/docs">新建文档</Link>
-          </Button>
         </>
       }
     >
-      <section className="grid gap-4 md:grid-cols-2">
-        {quickActions.map((action) => {
-          const Icon = action.icon;
-          return (
-            <Link
-              key={action.title}
-              href={action.href}
-              className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md"
-            >
-              <span className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-cyan-300 to-blue-500 text-slate-950">
+      {/* ── Core task cards ── */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {taskCards.map((card) => {
+          const Icon = card.icon;
+          const content = (
+            <div className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-blue-200 hover:shadow-md">
+              <span className={`grid h-10 w-10 place-items-center rounded-xl ${card.color}`}>
                 <Icon className="h-5 w-5" />
               </span>
-              <h2 className="text-xl font-black text-slate-950">{action.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{action.description}</p>
+              <h2 className="mt-4 text-base font-bold text-slate-950">{card.title}</h2>
+              <p className="mt-1.5 text-sm leading-6 text-slate-500">{card.desc}</p>
+              {card.pending ? (
+                <span className="mt-3 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-400">即将上线</span>
+              ) : null}
+            </div>
+          );
+          return card.pending ? (
+            <div key={card.title}>{content}</div>
+          ) : (
+            <Link key={card.title} href={card.href}>
+              {content}
             </Link>
           );
         })}
       </section>
 
-      <section className="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      {/* ── Recent tasks + Model recommend ── */}
+      <section className="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="flex items-center justify-between border-b border-slate-200 p-5">
             <div>
-              <h2 className="text-2xl font-black text-slate-950">最近文件</h2>
-              <p className="mt-1 text-sm text-slate-500">最近上传、编辑和处理过的文件。</p>
+              <h2 className="text-lg font-bold text-slate-950">最近智能任务</h2>
+              <p className="mt-1 text-sm text-slate-500">你的 AI 会话和使用模型的最近记录。</p>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/drive">
+              <Link href="/ai">
                 查看全部
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </div>
-          <div className="divide-y divide-slate-200">
-            {recentFiles.map((file) => (
-              <div
-                key={file.name}
-                className="grid min-w-0 gap-3 p-5 text-sm md:grid-cols-[minmax(180px,1fr)_100px_130px_130px]"
-              >
-                <span className="min-w-0 truncate font-bold text-slate-950">{file.name}</span>
-                <span className="text-slate-500">{file.type}</span>
-                <span className="text-slate-500">{file.time}</span>
-                <span className="font-semibold text-cyan-700">{file.status}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex items-center gap-3">
-            <MessageSquareText className="h-5 w-5 text-cyan-600" />
-            <h2 className="text-2xl font-black text-slate-950">最近 AI 会话</h2>
-          </div>
-          <div className="grid gap-3">
-            {aiCards.map((item) => (
+          <div className="divide-y divide-slate-100">
+            {recentTasks.map((item) => (
               <Link
                 key={item.title}
                 href="/ai"
-                className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-cyan-200 hover:bg-cyan-50"
+                className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-slate-50"
               >
-                <p className="font-bold text-slate-950">{item.title}</p>
-                <p className="mt-2 text-sm text-slate-500">{item.source}</p>
-                <p className="mt-3 text-xs font-semibold text-cyan-700">{item.time}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-slate-950">{item.title}</p>
+                  <p className="mt-1 text-xs text-slate-500">使用模型：{item.model}</p>
+                </div>
+                <span className="shrink-0 text-xs text-slate-400">{item.time}</span>
               </Link>
             ))}
           </div>
         </div>
+
+        <div className="hidden 2xl:block"><ModelRecommendCard /></div>
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-3">
-        {[
-          { icon: Cloud, title: "文件空间", value: "286 个文件", detail: "本周新增 18 个文件" },
-          { icon: HardDrive, title: "存储用量", value: "42GB / 100GB", detail: "仍有充足空间" },
-          { icon: Sparkles, title: "AI 额度", value: "3,280 / 5,000", detail: "适合继续处理批量任务" },
-        ].map((item) => {
+      {/* ── Asset & Content ── */}
+      <section className="mt-6">
+        <h2 className="text-lg font-bold text-slate-950">资料与内容</h2>
+        <p className="mt-1 text-sm text-slate-500">辅助 AI 更好理解和处理你的文件与内容。</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {assetCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <Link
+                key={card.title}
+                href={card.href}
+                className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm"
+              >
+                <span className={`grid h-10 w-10 place-items-center rounded-xl ${card.color}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <h3 className="mt-4 text-base font-bold text-slate-950">{card.title}</h3>
+                <p className="mt-1.5 text-sm leading-6 text-slate-500">{card.desc}</p>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ── Stats ── */}
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.title} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <Icon className="mb-4 h-5 w-5 text-cyan-600" />
-              <p className="text-sm text-slate-500">{item.title}</p>
-              <p className="mt-2 text-2xl font-black text-slate-950">{item.value}</p>
-              <p className="mt-2 text-sm text-slate-500">{item.detail}</p>
+            <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5">
+              <Icon className="mb-3 h-5 w-5 text-blue-600" />
+              <p className="text-xs font-medium text-slate-400">{item.title}</p>
+              <p className="mt-1 text-lg font-bold text-slate-950">{item.value}</p>
             </div>
           );
         })}

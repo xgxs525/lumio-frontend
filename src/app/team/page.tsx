@@ -7,6 +7,7 @@ import { Activity, Building2, Loader2, Plus, ShieldCheck, UserPlus, Users } from
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
 
@@ -40,8 +41,6 @@ export default function TeamPage() {
   const [departmentOpen, setDepartmentOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [inviteForm, setInviteForm] = useState({ email: "", role_code: "member", department_id: "" });
   const [departmentName, setDepartmentName] = useState("");
 
@@ -51,7 +50,6 @@ export default function TeamPage() {
   );
 
   async function loadTeam() {
-    setError("");
     setLoading(true);
     try {
       const [overviewResult, memberResult, departmentResult, roleResult, auditResult, usageResult] = await Promise.all([
@@ -69,7 +67,7 @@ export default function TeamPage() {
       setAuditLogs(auditResult.data);
       setUsage(usageResult.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "团队数据加载失败");
+      toast.error(err instanceof Error ? err.message : "团队数据加载失败");
     } finally {
       setLoading(false);
     }
@@ -85,7 +83,6 @@ export default function TeamPage() {
   async function inviteMember() {
     if (!inviteForm.email.trim()) return;
     setSaving(true);
-    setError("");
     try {
       await api.inviteTeamMember({
         email: inviteForm.email.trim(),
@@ -94,10 +91,10 @@ export default function TeamPage() {
       });
       setInviteForm({ email: "", role_code: "member", department_id: "" });
       setInviteOpen(false);
-      setNotice("成员邀请已记录。");
+      toast.success("成员邀请已记录。");
       await loadTeam();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "邀请成员失败");
+      toast.error(err instanceof Error ? err.message : "邀请成员失败");
     } finally {
       setSaving(false);
     }
@@ -106,15 +103,14 @@ export default function TeamPage() {
   async function createDepartment() {
     if (!departmentName.trim()) return;
     setSaving(true);
-    setError("");
     try {
       await api.createDepartment({ name: departmentName.trim() });
       setDepartmentName("");
       setDepartmentOpen(false);
-      setNotice("部门已创建。");
+      toast.success("部门已创建。");
       await loadTeam();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建部门失败");
+      toast.error(err instanceof Error ? err.message : "创建部门失败");
     } finally {
       setSaving(false);
     }
@@ -160,9 +156,6 @@ export default function TeamPage() {
         </div>
       }
     >
-      {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-      {notice && <div className="mb-5 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm text-cyan-50">{notice}</div>}
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { icon: Users, label: "团队成员", value: asNumber(overview.memberCount, members.length) },

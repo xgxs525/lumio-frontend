@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { AuthGate } from "@/components/workspace/auth-gate";
 import { api } from "@/lib/api";
 
@@ -25,7 +26,6 @@ export default function SplitPage() {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [task, setTask] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const payload = useMemo(
     () => ({
@@ -40,7 +40,6 @@ export default function SplitPage() {
   );
 
   async function handleUpload(file: File) {
-    setError(null);
     setLoading(true);
     try {
       const result = await api.uploadFile(file);
@@ -57,7 +56,7 @@ export default function SplitPage() {
       setTask(null);
       setTaskId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "上传失败");
+      toast.error(err instanceof Error ? err.message : "上传失败");
     } finally {
       setLoading(false);
     }
@@ -65,13 +64,12 @@ export default function SplitPage() {
 
   async function handlePreview() {
     if (!upload) return;
-    setError(null);
     setLoading(true);
     try {
       const result = await api.previewSplit(payload);
       setPreview(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "预览失败");
+      toast.error(err instanceof Error ? err.message : "预览失败");
     } finally {
       setLoading(false);
     }
@@ -79,14 +77,13 @@ export default function SplitPage() {
 
   async function handleSplit() {
     if (!upload) return;
-    setError(null);
     setLoading(true);
     try {
       const result = await api.createSplitTask(payload);
       setTaskId(result.taskId);
       pollTask(result.taskId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "提交任务失败");
+      toast.error(err instanceof Error ? err.message : "提交任务失败");
       setLoading(false);
     }
   }
@@ -103,7 +100,7 @@ export default function SplitPage() {
       } catch (err) {
         clearInterval(timer);
         setLoading(false);
-        setError(err instanceof Error ? err.message : "查询任务失败");
+        toast.error(err instanceof Error ? err.message : "查询任务失败");
       }
     }, 1500);
   }
@@ -189,12 +186,6 @@ export default function SplitPage() {
             </div>
           </CardContent>
         </Card>
-
-        {error && (
-          <Card className="border-red-400/30 bg-red-500/10">
-            <CardContent className="p-4 text-sm text-red-200">{error}</CardContent>
-          </Card>
-        )}
 
         {preview && (
           <Card>
