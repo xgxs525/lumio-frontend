@@ -407,7 +407,7 @@ function ModelCard({
   return (
     <article
       className={cn(
-        "flex min-h-[248px] flex-col rounded-[18px] border bg-white p-5 shadow-sm transition",
+        "flex min-h-[240px] flex-col rounded-[18px] border bg-white p-5 shadow-sm transition",
         selected ? "border-blue-300 ring-4 ring-blue-50" : "border-slate-200 hover:border-blue-200 hover:shadow-md",
       )}
     >
@@ -424,9 +424,9 @@ function ModelCard({
         </div>
       </div>
 
-      <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">{model.description}</p>
+      <p className="mt-2.5 line-clamp-2 min-h-[36px] text-sm leading-5 text-slate-500">{model.description}</p>
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
         {model.tags.slice(0, 3).map((tag) => (
           <span key={tag} className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
             {tag}
@@ -434,18 +434,18 @@ function ModelCard({
         ))}
       </div>
 
-      <div className="mt-4 grid gap-2 text-xs text-slate-500">
+      <div className="mt-3 grid gap-1.5 text-xs text-slate-500">
         <p className="truncate">
-          <span className="font-bold text-slate-700">输入：</span>
+          <span className="font-semibold text-slate-700">输入：</span>
           {model.inputTypes.join("、")}
         </p>
         <p className="truncate">
-          <span className="font-bold text-slate-700">输出：</span>
+          <span className="font-semibold text-slate-700">输出：</span>
           {model.outputTypes.join("、")}
         </p>
       </div>
 
-      <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+      <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
         {available ? (
           <button
             type="button"
@@ -1210,7 +1210,7 @@ function ModelPickerModal({
   return (
     <div className="fixed inset-0 z-[75] flex items-center justify-center px-4 py-8">
       <button type="button" className="absolute inset-0 bg-slate-950/25 backdrop-blur-sm" onClick={onClose} aria-label="关闭模型选择" />
-      <section className="relative flex max-h-[86vh] w-full max-w-5xl flex-col rounded-[20px] border border-slate-200 bg-white shadow-2xl shadow-slate-400/40">
+      <section className="relative flex max-h-[86vh] w-full max-w-4xl flex-col rounded-[20px] border border-slate-200 bg-white shadow-2xl shadow-slate-400/40">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
           <div>
             <h2 className="text-lg font-black text-slate-950">{recommendedOnly ? "选择推荐模型" : "切换视频模型"}</h2>
@@ -1220,7 +1220,7 @@ function ModelPickerModal({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="grid gap-3 overflow-y-auto p-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 overflow-y-auto p-5 sm:grid-cols-2 xl:grid-cols-3 auto-rows-fr">
           {models.map((model) => (
             <ModelCard
               key={model.id}
