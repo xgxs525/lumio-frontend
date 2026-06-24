@@ -84,7 +84,7 @@ const sidebarSections: NavSection[] = [
       { href: "/models", label: "模型广场", icon: Sparkles },
       { href: "/file-understand", label: "文件理解", icon: FileSearch },
       { href: "/image-gen", label: "图像生成", icon: ImageIcon },
-      { href: "/video-gen", label: "视频创作", icon: Film },
+      { href: "/video", label: "视频创作", icon: Film },
     ],
   },
   {
@@ -108,6 +108,8 @@ const searchableItems = [
   { href: "/workspace", label: "工作台", desc: "多模型 AI 平台使用中心" },
   { href: "/ai", label: "智能任务", desc: "选择模型或智能推荐，完成各类 AI 任务" },
   { href: "/models", label: "模型广场", desc: "浏览和比较已接入的 AI 模型" },
+  { href: "/image-gen", label: "图像生成", desc: "输入提示词，生成图片、封面和视觉素材" },
+  { href: "/video", label: "视频创作", desc: "选择视频模型，生成短视频、分镜和动态视觉内容" },
   { href: "/drive", label: "云盘", desc: "上传文件，让 AI 读取和分析" },
   { href: "/knowledge", label: "知识库", desc: "沉淀长期资料，让 AI 基于你的内容回答" },
   { href: "/billing", label: "账单与额度", desc: "套餐、订单、支付和额度" },

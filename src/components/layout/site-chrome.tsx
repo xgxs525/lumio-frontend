@@ -17,6 +17,7 @@ const workspacePrefixes = [
   "/file-understand",
   "/history",
   "/image-gen",
+  "/video",
   "/video-gen",
 ];
 

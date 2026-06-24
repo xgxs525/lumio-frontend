@@ -38,12 +38,11 @@ const taskCards = [
     pending: true,
   },
   {
-    href: "/video-gen",
+    href: "/video",
     icon: Film,
     color: "bg-amber-50 text-amber-600",
     title: "视频创作",
-    desc: "生成短视频脚本、分镜、画面提示词和内容方案。",
-    pending: true,
+    desc: "选择视频模型，生成视频、预览结果、保存云盘并查看历史。",
   },
 ];
 

@@ -31,6 +31,8 @@ type UsageItem = Record<string, unknown>;
 type BillingPlanItem = Record<string, unknown>;
 type BillingOrderItem = Record<string, unknown>;
 type BillingProviderItem = Record<string, unknown>;
+type VideoModelItem = Record<string, unknown>;
+type VideoTaskItem = Record<string, unknown>;
 type DrivePreview = {
   kind: "text" | "image" | "pdf" | "download";
   file: DriveFile;
@@ -121,6 +123,48 @@ async function download(path: string): Promise<{ blob: Blob; filename: string }>
 
 export const api = {
   health: () => request<{ status: string }>("/health"),
+
+  listVideoModels: (params?: { search?: string; recommendedOnly?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set("search", params.search);
+    if (params?.recommendedOnly) query.set("recommended_only", "true");
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request<ApiResponse<{ items: VideoModelItem[]; total: number }>>(`/video/models${suffix}`);
+  },
+
+  getVideoModel: (modelId: string) =>
+    request<ApiResponse<VideoModelItem>>(`/video/models/${encodeURIComponent(modelId)}`),
+
+  listVideoTasks: (params?: { status?: string; search?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set("status", params.status);
+    if (params?.search) query.set("search", params.search);
+    if (params?.limit) query.set("limit", String(params.limit));
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request<ApiResponse<{ items: VideoTaskItem[]; total: number }>>(`/video/tasks${suffix}`);
+  },
+
+  recentVideoTasks: (limit = 3) =>
+    request<ApiResponse<VideoTaskItem[]>>(`/video/tasks/recent?limit=${encodeURIComponent(String(limit))}`),
+
+  getVideoTask: (taskId: string) =>
+    request<ApiResponse<VideoTaskItem>>(`/video/tasks/${encodeURIComponent(taskId)}`),
+
+  createVideoTask: (payload: Record<string, unknown>) =>
+    request<ApiResponse<VideoTaskItem>>("/video/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+
+  saveVideoTask: (taskId: string) =>
+    request<ApiResponse<VideoTaskItem>>(`/video/tasks/${encodeURIComponent(taskId)}/save`, { method: "POST" }),
+
+  cancelVideoTask: (taskId: string) =>
+    request<ApiResponse<VideoTaskItem>>(`/video/tasks/${encodeURIComponent(taskId)}/cancel`, { method: "POST" }),
+
+  deleteVideoTask: (taskId: string) =>
+    request<{ success: boolean }>(`/video/tasks/${encodeURIComponent(taskId)}`, { method: "DELETE" }),
 
   register: (payload: { account: string; password: string; name?: string }) =>
     request<AuthResult>("/auth/register", {
