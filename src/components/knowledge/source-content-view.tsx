@@ -1,236 +1,886 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Download, FileText, ImageIcon, Loader2, Maximize2, RefreshCw, X } from "lucide-react";
+/* eslint-disable @next/next/no-img-element -- file previews use authenticated Blob URLs and generated page image URLs. */
+
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  FileText,
+  ImageIcon,
+  Loader2,
+  Minus,
+  Plus,
+  RefreshCw,
+  Table2,
+  X,
+} from "lucide-react";
+
+import { toast } from "@/components/ui/toast";
+import { useIsolatedWheelScroll } from "@/hooks/use-isolated-wheel-scroll";
+import { api } from "@/lib/api";
 
 type Rec = Record<string, unknown>;
+type PreviewKind = "image" | "pdf" | "spreadsheet" | "word" | "ppt" | "markdown" | "text" | "link" | "unknown";
+type SheetPreview = { name: string; rows: Array<Array<string | number | boolean | null>> };
 
-function asText(v: unknown, fallback = "") { return typeof v === "string" ? v : fallback; }
-function asNum(v: unknown, fallback = 0) { return typeof v === "number" ? v : fallback; }
-function stripHtml(html: string) { if (!html) return ""; return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(); }
-
-// ── File URL helper (full backend URL for iframe/img auth) ──
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
-function fileDownloadUrl(fileId: string) { return `${API_BASE}/drive/files/${fileId}/download`; }
-function hasFile(source: Rec) { return !!asText(source.fileId); }
+const PDF_WORKER_SRC = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
 
-// ── Classify ──
-function classifySource(source: Rec) {
-  const st = asText(source.sourceType);
-  const filename = (asText(source.originalFilename) || asText(source.title) || "").toLowerCase();
+function asText(v: unknown, fallback = "") {
+  return typeof v === "string" ? v : fallback;
+}
+
+function asArray(v: unknown): unknown[] {
+  return Array.isArray(v) ? v : [];
+}
+
+function fileDownloadUrl(fileId: string) {
+  return `${API_BASE}/drive/files/${fileId}/download`;
+}
+
+function hasFile(source: Rec) {
+  return !!asText(source.fileId);
+}
+
+function fileName(source: Rec) {
+  const meta = metadata(source);
+  return asText(source.originalFilename) || asText(meta.originalFilename) || asText(source.title) || "文件";
+}
+
+function fileExt(source: Rec) {
+  const name = fileName(source).toLowerCase();
+  return name.includes(".") ? name.slice(name.lastIndexOf(".")) : "";
+}
+
+function metadata(source: Rec) {
+  return (source.metadata || {}) as Rec;
+}
+
+function downloadFileName(source: Rec) {
+  const original = fileName(source);
+  const ext = fileExt(source);
+  if (original && original !== "文件") return original;
+  const title = asText(source.title, "download");
+  return ext && !title.toLowerCase().endsWith(ext) ? `${title}${ext}` : title;
+}
+
+function previewField(source: Rec, key: string) {
+  const meta = metadata(source);
+  return source[key] ?? meta[key];
+}
+
+function classifySource(source: Rec): PreviewKind {
+  const sourceType = asText(source.sourceType);
+  const ext = fileExt(source);
   const mime = asText(source.fileMimeType).toLowerCase();
-  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")) : "";
 
-  if (mime.startsWith("image/") || [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".ico"].includes(ext)) return "image" as const;
-  if (mime === "application/pdf" || ext === ".pdf") return "pdf" as const;
-  if (ext === ".xlsx" || ext === ".xls" || ext === ".csv" || ext === ".tsv" || mime.includes("spreadsheet") || mime.includes("excel") || mime === "text/csv") return "spreadsheet" as const;
-  if (ext === ".docx" || ext === ".doc" || ext === ".rtf" || ext === ".odt" || mime.includes("word") || mime.includes("document") || mime === "application/rtf") return "word" as const;
-  if (ext === ".pptx" || ext === ".ppt" || mime.includes("presentation") || mime.includes("powerpoint")) return "ppt" as const;
-  if (ext === ".txt" || ext === ".md" || ext === ".markdown" || mime.startsWith("text/")) return "text" as const;
-  if (st === "link") return "link" as const;
-  if (st === "manual" || st === "text" || asText(source.rawText)) return "text" as const;
-  return "unknown" as const;
+  if (mime.startsWith("image/") || [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".ico"].includes(ext)) return "image";
+  if (mime === "application/pdf" || ext === ".pdf") return "pdf";
+  if ([".xlsx", ".xls", ".csv", ".tsv"].includes(ext) || mime.includes("spreadsheet") || mime.includes("excel") || mime === "text/csv") return "spreadsheet";
+  if ([".doc", ".docx", ".rtf", ".odt"].includes(ext) || mime.includes("word") || mime.includes("officedocument.wordprocessingml") || mime === "application/rtf") return "word";
+  if ([".ppt", ".pptx"].includes(ext) || mime.includes("presentation") || mime.includes("powerpoint")) return "ppt";
+  if (ext === ".md" || ext === ".markdown" || mime.includes("markdown")) return "markdown";
+  if (ext === ".txt" || mime.startsWith("text/")) return "text";
+  if (sourceType === "link") return "link";
+  if (sourceType === "manual" || sourceType === "text") return "text";
+  return "unknown";
 }
 
-// ── PDF Viewer (object tag for auth cookie support) ──
-function PDFViewer({ source }: { source: Rec }) {
+function sanitizePreviewHtml(html: string) {
+  return html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+    .replace(/\son\w+="[^"]*"/gi, "")
+    .replace(/\son\w+='[^']*'/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
+async function downloadOriginal(source: Rec) {
   const fileId = asText(source.fileId);
-  const url = fileId ? fileDownloadUrl(fileId) : "";
+  if (!fileId) return;
+  try {
+    const result = await api.downloadDriveFile(fileId);
+    const url = URL.createObjectURL(result.blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = result.filename && result.filename !== "download" ? result.filename : downloadFileName(source);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : "下载失败");
+  }
+}
+
+async function copyOriginalLink(source: Rec) {
+  const fileId = asText(source.fileId);
+  if (!fileId) return;
+  const url = typeof window === "undefined"
+    ? fileDownloadUrl(fileId)
+    : `${window.location.origin}/api/v1/drive/files/${fileId}/download`;
+  await navigator.clipboard.writeText(url);
+  toast.success("链接已复制。");
+}
+
+function PreviewToolbar({
+  title,
+  icon,
+  source,
+  loading,
+  onReload,
+  extra,
+}: {
+  title: string;
+  icon: ReactNode;
+  source: Rec;
+  loading?: boolean;
+  onReload?: () => void;
+  extra?: ReactNode;
+}) {
   return (
-    <object data={url} type="application/pdf" className="w-full min-h-[800px] border-0 rounded-b-xl" title="PDF 预览">
-      <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-        <FileText className="h-10 w-10 text-slate-300" />
-        <p className="text-sm text-slate-400">浏览器不支持嵌入 PDF 预览。</p>
-        <a href={url} download className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">
-          <Download className="mr-1.5 inline h-3.5 w-3.5" />下载 PDF 文件
-        </a>
+    <div className="sticky top-0 z-10 flex min-h-12 flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/95 px-4 py-2 backdrop-blur">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 text-xs font-medium text-slate-500">
+        {icon}
+        <span className="truncate">{title}</span>
       </div>
-    </object>
+      {extra}
+      {onReload ? (
+        <button
+          onClick={onReload}
+          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+          title="重新加载"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+        </button>
+      ) : null}
+      {hasFile(source) ? (
+        <>
+          <button
+            onClick={() => void copyOriginalLink(source)}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+            title="复制文件链接"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => void downloadOriginal(source)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <Download className="h-3.5 w-3.5" />
+            下载原文件
+          </button>
+        </>
+      ) : null}
+    </div>
   );
 }
 
-// ── Image Viewer ──
-function ImageViewer({ source }: { source: Rec }) {
-  const [loadState, setLoadState] = useState<"loading" | "loaded" | "error">("loading");
+function PreviewLoading({ title = "预览生成中", description = "序光正在生成文件预览，完成后会自动显示。" }) {
+  return (
+    <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+      <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <p className="text-sm font-semibold text-slate-700">{title}</p>
+      <p className="max-w-sm text-sm leading-6 text-slate-400">{description}</p>
+    </div>
+  );
+}
+
+function PreviewProblem({
+  title,
+  description,
+  source,
+  onReload,
+}: {
+  title: string;
+  description: string;
+  source: Rec;
+  onReload?: () => void;
+}) {
+  return (
+    <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+      <AlertTriangle className="h-9 w-9 text-amber-400" />
+      <p className="text-sm font-semibold text-slate-700">{title}</p>
+      <p className="max-w-sm text-sm leading-6 text-slate-400">{description}</p>
+      <div className="mt-2 flex flex-wrap justify-center gap-2">
+        {onReload ? (
+          <button onClick={onReload} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">
+            <RefreshCw className="mr-1 inline h-3.5 w-3.5" />
+            重新加载
+          </button>
+        ) : null}
+        {hasFile(source) ? (
+          <button onClick={() => void downloadOriginal(source)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">
+            <Download className="mr-1 inline h-3.5 w-3.5" />
+            下载原文件
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ImagePreview({ source }: { source: Rec }) {
+  const [objectUrl, setObjectUrl] = useState("");
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [fullscreen, setFullscreen] = useState(false);
-  const fileId = asText(source.fileId);
-  const filename = asText(source.originalFilename) || asText(source.title) || "图片";
-  const url = fileId ? fileDownloadUrl(fileId) : "";
-  if (!url) return <EmptyState icon={<ImageIcon className="h-10 w-10 text-slate-300" />} text="图片文件信息不完整，无法预览。" />;
+  const [reloadKey, setReloadKey] = useState(0);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
 
-  return (
-    <div className="relative px-6 py-8">
-      <div className="flex items-center justify-center rounded-2xl bg-slate-100/50 p-4 min-h-[400px]">
-        {loadState === "loading" && <div className="flex flex-col items-center gap-3"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /><span className="text-sm text-slate-400">图片加载中...</span></div>}
-        {loadState === "error" && (
-          <div className="flex flex-col items-center gap-3">
-            <ImageIcon className="h-10 w-10 text-slate-300" />
-            <p className="text-sm text-slate-500">图片预览失败</p>
-            <div className="flex gap-2">
-              <button onClick={() => setLoadState("loading")} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"><RefreshCw className="mr-1 inline h-3 w-3" />重新加载</button>
-              <a href={url} download={filename} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"><Download className="mr-1 inline h-3 w-3" />下载原图</a>
-            </div>
-          </div>
-        )}
-        <img src={url} alt={filename} onLoad={() => setLoadState("loaded")} onError={() => setLoadState("error")}
-          className={`max-w-full max-h-[600px] object-contain rounded-xl cursor-zoom-in ${loadState === "loaded" ? "" : "hidden"}`}
-          onClick={() => loadState === "loaded" && setFullscreen(true)} />
-      </div>
-      {fullscreen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-8" onClick={() => setFullscreen(false)}>
-          <button onClick={() => setFullscreen(false)} className="absolute top-4 right-4 grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30"><X className="h-5 w-5" /></button>
-          <img src={url} alt={filename} className="max-w-full max-h-full object-contain rounded-2xl" onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
-    </div>
-  );
-}
+  useIsolatedWheelScroll(fullscreenRef);
 
-// ── Spreadsheet Table ──
-function SpreadsheetView({ source }: { source: Rec }) {
-  const raw = asText(source.rawText);
-  const sheets = useMemo(() => {
-    if (!raw) return [];
-    const lines = raw.split("\n").filter(Boolean);
-    const out: { name: string; headers: string[]; rows: string[][] }[] = [];
-    let cur: typeof out[0] | null = null;
-    for (const line of lines) {
-      const m = line.match(/^\[Sheet:\s*(.+?)\]/i);
-      if (m) { if (cur && cur.rows.length > 0) out.push(cur); cur = { name: m[1], headers: [], rows: [] }; continue; }
-      if (!cur) cur = { name: "Sheet 1", headers: [], rows: [] };
-      const cells = line.split("\t");
-      if (cur.headers.length === 0) cur.headers = cells;
-      else cur.rows.push(cells);
+  useEffect(() => {
+    if (!fullscreen) return;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [fullscreen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let url = "";
+
+    async function load() {
+      const fileId = asText(source.fileId);
+      if (!fileId) {
+        setState("error");
+        return;
+      }
+      setState("loading");
+      try {
+        const result = await api.downloadDriveFile(fileId);
+        if (cancelled) return;
+        url = URL.createObjectURL(result.blob);
+        setObjectUrl(url);
+        setState("ready");
+      } catch {
+        if (!cancelled) setState("error");
+      }
     }
-    if (cur && cur.rows.length > 0) out.push(cur);
-    return out;
-  }, [raw]);
-  const [active, setActive] = useState(0);
 
-  if (!sheets.length) return <TextContent source={source} />;
-  const sheet = sheets[active];
-  if (!sheet) return <TextContent source={source} />;
-
-  return (
-    <div className="px-2 py-4">
-      {sheets.length > 1 && (
-        <div className="flex gap-1 mb-4 px-4 overflow-x-auto">
-          {sheets.map((s, i) => (
-            <button key={i} onClick={() => setActive(i)} className={`shrink-0 rounded-t-lg px-4 py-2 text-xs font-medium transition ${i === active ? "bg-white text-blue-600 border-x border-t border-slate-200" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}>{s.name}</button>
-          ))}
-        </div>
-      )}
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full border-collapse text-sm">
-          <thead><tr className="bg-slate-50">
-            {sheets.length === 1 && <th className="sticky left-0 bg-slate-50 border-r border-slate-200 px-3 py-2 text-left text-xs font-semibold text-slate-500 whitespace-nowrap">#</th>}
-            {sheet.headers.map((h, i) => <th key={i} className="border-b border-slate-200 px-4 py-2 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">{h}</th>)}
-          </tr></thead>
-          <tbody>
-            {sheet.rows.map((row, ri) => (
-              <tr key={ri} className={ri % 2 === 0 ? "bg-white" : "bg-slate-50/30"}>
-                {sheets.length === 1 && <td className="sticky left-0 border-r border-slate-100 px-3 py-2 text-xs text-slate-400 whitespace-nowrap bg-inherit">{ri + 1}</td>}
-                {row.map((cell, ci) => <td key={ci} className="border-b border-slate-100 px-4 py-2 text-sm text-slate-700 max-w-[300px] truncate" title={cell}>{cell}</td>)}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ── Empty State ──
-function EmptyState({ icon, text }: { icon?: React.ReactNode; text: string }) {
-  return (
-    <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-      {icon || <FileText className="h-10 w-10 text-slate-300" />}
-      <p className="text-sm text-slate-400 max-w-sm">{text}</p>
-    </div>
-  );
-}
-
-// ── Text Content ──
-function TextContent({ source }: { source: Rec }) {
-  const raw = asText(source.rawText);
-  const text = raw ? (stripHtml(raw) || raw) : "";
-
-  if (!text) {
-    // For file types that have a file ID, don't show empty — file preview handles it
-    if (hasFile(source)) return <PDFViewer source={source} />;
-    return <EmptyState text="暂未提取出可预览的正文内容。如果这是刚添加的资料，可能需要等待处理完成。" />;
-  }
-
-  // Word content with HTML
-  if (raw && raw.trim().startsWith("<")) {
-    return <div className="prose prose-slate max-w-none text-[15px] leading-8 text-slate-800 px-6 py-8" dangerouslySetInnerHTML={{ __html: raw }} />;
-  }
-
-  // Format by paragraphs
-  const paragraphs = raw ? raw.split(/\n{2,}/).filter(Boolean) : [text];
-  if (paragraphs.length > 1) {
-    return (
-      <div className="max-w-[760px] mx-auto px-8 py-8 space-y-4">
-        {paragraphs.map((p, i) => <p key={i} className="text-[15px] leading-8 text-slate-800">{p}</p>)}
-      </div>
-    );
-  }
-  return <div className="whitespace-pre-wrap px-8 py-8 text-[15px] leading-8 text-slate-800">{text}</div>;
-}
-
-// ── File download bar (for Word/PPT that can't be embedded) ──
-function FileContent({ source, icon, label }: { source: Rec; icon: React.ReactNode; label: string }) {
-  const fileId = asText(source.fileId);
-  const filename = asText(source.originalFilename) || asText(source.title) || "文件";
-  const url = fileId ? fileDownloadUrl(fileId) : "";
-  const rawText = asText(source.rawText);
+    void load();
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [source, reloadKey]);
 
   return (
     <div>
-      {/* File action bar */}
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-        <div className="flex items-center gap-2 text-sm text-slate-600">{icon} <span className="font-medium">{label} 预览</span></div>
-        <div className="flex-1" />
-        <a href={url} download={filename} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 transition">
-          <Download className="h-3.5 w-3.5" />下载原文件
-        </a>
-      </div>
-      {/* Extracted text preview */}
-      {rawText ? (
-        rawText.trim().startsWith("<") ? (
-          <div className="prose prose-slate max-w-none text-[15px] leading-8 text-slate-800 px-6 py-8" dangerouslySetInnerHTML={{ __html: rawText }} />
-        ) : (
-          <div className="max-w-[760px] mx-auto px-8 py-8 space-y-4">
-            {rawText.split(/\n{2,}/).filter(Boolean).map((p, i) => <p key={i} className="text-[15px] leading-8 text-slate-800">{p}</p>)}
+      <PreviewToolbar
+        title="图片原图预览"
+        icon={<ImageIcon className="h-5 w-5 text-blue-500" />}
+        source={source}
+        loading={state === "loading"}
+        onReload={() => setReloadKey((value) => value + 1)}
+      />
+      {state === "loading" ? <PreviewLoading title="图片加载中" description="正在读取原始图片文件。" /> : null}
+      {state === "error" ? (
+        <PreviewProblem
+          title="图片预览失败"
+          description="你可以重新加载，或下载原图查看。"
+          source={source}
+          onReload={() => setReloadKey((value) => value + 1)}
+        />
+      ) : null}
+      {state === "ready" && objectUrl ? (
+        <div className="px-4 py-5">
+          <div className="flex min-h-[480px] items-center justify-center rounded-2xl bg-slate-100/60 p-4">
+            <img
+              src={objectUrl}
+              alt={fileName(source)}
+              className="max-h-[720px] max-w-full cursor-zoom-in rounded-xl object-contain shadow-sm"
+              onClick={() => setFullscreen(true)}
+            />
           </div>
-        )
-      ) : (
-        <EmptyState text="文档内容提取中，处理完成后将显示正文预览。你可下载原文件阅读全部内容。" />
-      )}
+        </div>
+      ) : null}
+      {fullscreen && objectUrl ? (
+        <div ref={fullscreenRef} className="fixed inset-0 z-[100] flex items-center justify-center overflow-auto overscroll-contain bg-black/80 p-8 backdrop-blur-sm" onClick={() => setFullscreen(false)}>
+          <button onClick={() => setFullscreen(false)} className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white hover:bg-white/25">
+            <X className="h-5 w-5" />
+          </button>
+          <img src={objectUrl} alt={fileName(source)} className="max-h-full max-w-full rounded-2xl object-contain" onClick={(event) => event.stopPropagation()} />
+        </div>
+      ) : null}
     </div>
   );
 }
 
-// ── Main ──
-export default function SourceContentView({ source, chunks }: { source: Rec; chunks: Rec[] }) {
+function PdfPage({ doc, pageNumber, scale }: { doc: PDFDocumentProxy; pageNumber: number; scale: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [rendering, setRendering] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    let renderTask: RenderTask | null = null;
+
+    async function renderPage() {
+      setRendering(true);
+      const page = await doc.getPage(pageNumber);
+      if (cancelled) return;
+      const viewport = page.getViewport({ scale });
+      const canvas = canvasRef.current;
+      const context = canvas?.getContext("2d");
+      if (!canvas || !context) return;
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = `${Math.floor(viewport.width)}px`;
+      canvas.style.height = `${Math.floor(viewport.height)}px`;
+      const task = page.render({ canvas, canvasContext: context, viewport });
+      renderTask = task;
+      await task.promise.catch(() => null);
+      if (!cancelled) setRendering(false);
+    }
+
+    void renderPage();
+    return () => {
+      cancelled = true;
+      renderTask?.cancel();
+    };
+  }, [doc, pageNumber, scale]);
+
+  return (
+    <div className="mx-auto mb-4 w-fit rounded-xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
+      <div className="mb-2 text-center text-xs font-medium text-slate-400">第 {pageNumber} 页</div>
+      <div className="relative">
+        {rendering ? (
+          <div className="absolute inset-0 grid place-items-center bg-white/70">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+          </div>
+        ) : null}
+        <canvas ref={canvasRef} className="max-w-full" />
+      </div>
+    </div>
+  );
+}
+
+function PdfPreview({ source }: { source: Rec }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
+  const [pageCount, setPageCount] = useState(0);
+  const [scale, setScale] = useState(1.15);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const loadPdf = useCallback(async () => {
+    const fileId = asText(source.fileId);
+    if (!fileId) {
+      setState("error");
+      setError("缺少原文件，无法预览 PDF。");
+      return;
+    }
+    setState("loading");
+    setError("");
+    try {
+      const [pdfjsLib, download] = await Promise.all([
+        import("pdfjs-dist"),
+        api.downloadDriveFile(fileId),
+      ]);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+      const buffer = await download.blob.arrayBuffer();
+      const loaded = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+      setDoc(loaded);
+      setPageCount(loaded.numPages);
+      setState("ready");
+    } catch (err) {
+      setState("error");
+      setError(err instanceof Error ? err.message : "PDF 渲染失败");
+    }
+  }, [source]);
+
+  useEffect(() => {
+    void loadPdf();
+  }, [loadPdf, reloadKey]);
+
+  async function fitWidth() {
+    if (!doc) return;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    const width = Math.max(320, (containerRef.current?.clientWidth || 900) - 56);
+    setScale(Math.min(2.4, Math.max(0.6, width / viewport.width)));
+  }
+
+  const pages = useMemo(() => Array.from({ length: pageCount }, (_, index) => index + 1), [pageCount]);
+
+  return (
+    <div>
+      <PreviewToolbar
+        title="PDF 原文件预览"
+        icon={<FileText className="h-5 w-5 text-red-500" />}
+        source={source}
+        loading={state === "loading"}
+        onReload={() => setReloadKey((value) => value + 1)}
+        extra={
+          <div className="flex items-center rounded-lg border border-slate-200 bg-white">
+            <button onClick={() => setScale((value) => Math.max(0.55, value - 0.15))} className="grid h-8 w-8 place-items-center text-slate-500 hover:bg-slate-50" title="缩小">
+              <Minus className="h-4 w-4" />
+            </button>
+            <button onClick={() => void fitWidth()} className="h-8 border-x border-slate-200 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50">适应宽度</button>
+            <button onClick={() => setScale((value) => Math.min(2.6, value + 0.15))} className="grid h-8 w-8 place-items-center text-slate-500 hover:bg-slate-50" title="放大">
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        }
+      />
+      {state === "loading" ? <PreviewLoading title="PDF 加载中" description="正在读取并渲染 PDF 页面。" /> : null}
+      {state === "error" ? (
+        <PreviewProblem
+          title="文件预览失败"
+          description={error || "你可以下载原文件查看，或稍后重试。"}
+          source={source}
+          onReload={() => setReloadKey((value) => value + 1)}
+        />
+      ) : null}
+      {state === "ready" && doc ? (
+        <div ref={containerRef} className="bg-slate-100/70 px-3 py-4">
+          {pages.map((pageNumber) => (
+            <PdfPage key={`${pageNumber}-${scale}`} doc={doc} pageNumber={pageNumber} scale={scale} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PageImagesPreview({ source, images }: { source: Rec; images: string[] }) {
+  const [active, setActive] = useState(0);
+  const current = images[active] || "";
+  return (
+    <div>
+      <PreviewToolbar
+        title="页面图片预览"
+        icon={<FileText className="h-5 w-5 text-blue-500" />}
+        source={source}
+        extra={
+          <div className="flex items-center gap-1 text-xs text-slate-500">
+            <button onClick={() => setActive((value) => Math.max(0, value - 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50" disabled={active === 0}>
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="px-2">第 {active + 1} / {images.length} 页</span>
+            <button onClick={() => setActive((value) => Math.min(images.length - 1, value + 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50" disabled={active >= images.length - 1}>
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        }
+      />
+      <div className="bg-slate-100/70 px-4 py-5">
+        <img src={current} alt={`第 ${active + 1} 页`} className="mx-auto max-h-[760px] max-w-full rounded-xl bg-white object-contain shadow-sm ring-1 ring-slate-200" />
+      </div>
+    </div>
+  );
+}
+
+function HtmlDocumentPreview({ source, html, title = "文档预览" }: { source: Rec; html: string; title?: string }) {
+  return (
+    <div>
+      <PreviewToolbar title={title} icon={<FileText className="h-5 w-5 text-blue-500" />} source={source} />
+      <div className="bg-slate-100/70 px-4 py-5">
+        <div
+          className="mx-auto max-w-[840px] rounded-2xl bg-white px-8 py-7 text-[15px] leading-8 text-slate-800 shadow-sm ring-1 ring-slate-200 [&_h1]:mb-5 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:mb-4 [&_h2]:mt-7 [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:mb-3 [&_h3]:mt-6 [&_h3]:text-xl [&_h3]:font-bold [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_strong]:font-bold [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_ul]:list-disc [&_ul]:pl-6"
+          dangerouslySetInnerHTML={{ __html: sanitizePreviewHtml(html) }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function WordPreview({ source }: { source: Rec }) {
+  const [html, setHtml] = useState("");
+  const [state, setState] = useState<"loading" | "ready" | "fallback" | "error">("loading");
+  const [message, setMessage] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const ext = fileExt(source);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      const previewHtml = asText(previewField(source, "previewHtml")) || asText(previewField(source, "preview_html"));
+      if (previewHtml) {
+        setHtml(previewHtml);
+        setState("ready");
+        return;
+      }
+
+      const fileId = asText(source.fileId);
+      if (!fileId) {
+        setState("fallback");
+        setMessage("缺少原文件，无法生成文档预览。");
+        return;
+      }
+
+      if (ext !== ".docx") {
+        setState("fallback");
+        setMessage("当前格式需要后端转换服务才能原样预览。");
+        return;
+      }
+
+      setState("loading");
+      setMessage("");
+      try {
+        const [mammoth, download] = await Promise.all([
+          import("mammoth"),
+          api.downloadDriveFile(fileId),
+        ]);
+        const arrayBuffer = await download.blob.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer }, {
+          styleMap: [
+            "p[style-name='Title'] => h1:fresh",
+            "p[style-name='Heading 1'] => h1:fresh",
+            "p[style-name='Heading 2'] => h2:fresh",
+            "p[style-name='Heading 3'] => h3:fresh",
+          ],
+        });
+        if (cancelled) return;
+        setHtml(result.value);
+        setState("ready");
+      } catch (err) {
+        if (cancelled) return;
+        setState("fallback");
+        setMessage(err instanceof Error ? err.message : "文档预览生成失败。");
+      }
+    }
+
+    void load();
+    return () => { cancelled = true; };
+  }, [source, ext, reloadKey]);
+
+  if (state === "loading") {
+    return (
+      <div>
+        <PreviewToolbar title="Word 文档预览" icon={<FileText className="h-5 w-5 text-blue-500" />} source={source} loading onReload={() => setReloadKey((value) => value + 1)} />
+        <PreviewLoading title="文档预览生成中" description="序光正在读取 Word 原文件并生成文档预览。" />
+      </div>
+    );
+  }
+
+  if (state === "ready") {
+    return <HtmlDocumentPreview source={source} html={html} title="Word 文档预览" />;
+  }
+
+  const raw = asText(source.rawText);
+  if (raw) {
+    return (
+      <div>
+        <PreviewToolbar title="Word 文档预览" icon={<FileText className="h-5 w-5 text-blue-500" />} source={source} onReload={() => setReloadKey((value) => value + 1)} />
+        <div className="border-b border-amber-100 bg-amber-50 px-6 py-3 text-xs text-amber-700">
+          {message || "原文件预览暂不可用，以下为保留换行的文本兜底预览。"}
+        </div>
+        <TextContent source={{ ...source, rawText: raw }} compact />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <PreviewToolbar title="Word 文档预览" icon={<FileText className="h-5 w-5 text-blue-500" />} source={source} onReload={() => setReloadKey((value) => value + 1)} />
+      <PreviewProblem title="文件预览失败" description={message || "你可以下载原文件查看，或稍后重试。"} source={source} onReload={() => setReloadKey((value) => value + 1)} />
+    </div>
+  );
+}
+
+function PptPreview({ source }: { source: Rec }) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [message, setMessage] = useState("");
+  const [scale, setScale] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const ext = fileExt(source);
+
+  useIsolatedWheelScroll(scrollRef);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      const fileId = asText(source.fileId);
+      const wrapper = wrapperRef.current;
+      if (!fileId || !wrapper) {
+        setState("error");
+        setMessage("缺少原文件，无法预览 PPT。");
+        return;
+      }
+      if (ext !== ".pptx") {
+        setState("error");
+        setMessage("当前 PPT 格式需要转换服务生成 PDF 或页面图片后才能预览。");
+        return;
+      }
+      setState("loading");
+      setMessage("");
+      wrapper.innerHTML = "";
+      try {
+        const [pptxPreview, download] = await Promise.all([
+          import("pptx-preview"),
+          api.downloadDriveFile(fileId),
+        ]);
+        if (cancelled) return;
+        const previewer = pptxPreview.init(wrapper, { width: 960, height: 540 });
+        await previewer.preview(await download.blob.arrayBuffer());
+        if (!cancelled) setState("ready");
+      } catch (err) {
+        if (cancelled) return;
+        setState("error");
+        setMessage(err instanceof Error ? err.message : "PPT 预览生成失败。");
+      }
+    }
+
+    const cleanupWrapper = wrapperRef.current;
+    void load();
+    return () => {
+      cancelled = true;
+      if (cleanupWrapper) cleanupWrapper.innerHTML = "";
+    };
+  }, [source, ext, reloadKey]);
+
+  return (
+    <div>
+      <PreviewToolbar
+        title="PPT 幻灯片预览"
+        icon={<FileText className="h-5 w-5 text-orange-500" />}
+        source={source}
+        loading={state === "loading"}
+        onReload={() => setReloadKey((value) => value + 1)}
+        extra={
+          <div className="flex items-center rounded-lg border border-slate-200 bg-white">
+            <button onClick={() => setScale((value) => Math.max(0.6, value - 0.1))} className="grid h-8 w-8 place-items-center text-slate-500 hover:bg-slate-50" title="缩小">
+              <Minus className="h-4 w-4" />
+            </button>
+            <button onClick={() => setScale(1)} className="h-8 border-x border-slate-200 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50">100%</button>
+            <button onClick={() => setScale((value) => Math.min(1.8, value + 0.1))} className="grid h-8 w-8 place-items-center text-slate-500 hover:bg-slate-50" title="放大">
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        }
+      />
+      {state === "loading" ? <PreviewLoading title="幻灯片加载中" description="正在读取 PPTX 原文件并渲染幻灯片。" /> : null}
+      {state === "error" ? <PreviewProblem title="文件预览失败" description={message || "你可以下载原文件查看，或稍后重试。"} source={source} onReload={() => setReloadKey((value) => value + 1)} /> : null}
+      <div ref={scrollRef} className={`${state === "ready" ? "block" : "hidden"} overflow-auto overscroll-contain bg-slate-100/70 px-4 py-5 [scrollbar-gutter:stable]`}>
+        <div className="mx-auto w-fit origin-top" style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
+          <div ref={wrapperRef} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpreadsheetPreview({ source }: { source: Rec }) {
+  const [sheets, setSheets] = useState<SheetPreview[]>([]);
+  const [active, setActive] = useState(0);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [message, setMessage] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+
+  useIsolatedWheelScroll(tableScrollRef);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      const fileId = asText(source.fileId);
+      if (!fileId) {
+        setState("error");
+        setMessage("缺少原文件，无法预览表格。");
+        return;
+      }
+      setState("loading");
+      setMessage("");
+      try {
+        const [xlsx, download] = await Promise.all([
+          import("xlsx"),
+          api.downloadDriveFile(fileId),
+        ]);
+        const ext = fileExt(source);
+        const workbook = [".csv", ".tsv"].includes(ext)
+          ? xlsx.read(await download.blob.text(), { type: "string", raw: true, FS: ext === ".tsv" ? "\t" : "," })
+          : xlsx.read(await download.blob.arrayBuffer(), { type: "array", cellDates: true });
+        const next = workbook.SheetNames.map((name) => ({
+          name,
+          rows: xlsx.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: "" }) as SheetPreview["rows"],
+        })).filter((sheet) => sheet.rows.length > 0);
+        if (cancelled) return;
+        setSheets(next);
+        setActive(0);
+        setState(next.length ? "ready" : "error");
+        if (!next.length) setMessage("表格中没有可预览的数据。");
+      } catch (err) {
+        if (cancelled) return;
+        setState("error");
+        setMessage(err instanceof Error ? err.message : "表格预览失败。");
+      }
+    }
+
+    void load();
+    return () => { cancelled = true; };
+  }, [source, reloadKey]);
+
+  const sheet = sheets[active];
+  const header = sheet?.rows[0] || [];
+  const rows = sheet?.rows.slice(1) || [];
+  const columnCount = Math.max(header.length, ...rows.map((row) => row.length), 1);
+  const headers = Array.from({ length: columnCount }, (_, index) => String(header[index] ?? `列 ${index + 1}`));
+
+  async function copyTable() {
+    if (!sheet) return;
+    const text = sheet.rows.map((row) => row.map((cell) => String(cell ?? "")).join("\t")).join("\n");
+    await navigator.clipboard.writeText(text);
+    toast.success("表格已复制。");
+  }
+
+  return (
+    <div>
+      <PreviewToolbar
+        title="表格原文件预览"
+        icon={<Table2 className="h-5 w-5 text-emerald-500" />}
+        source={source}
+        loading={state === "loading"}
+        onReload={() => setReloadKey((value) => value + 1)}
+        extra={state === "ready" ? (
+          <button onClick={() => void copyTable()} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+            <Copy className="h-3.5 w-3.5" />
+            复制表格
+          </button>
+        ) : null}
+      />
+      {state === "loading" ? <PreviewLoading title="表格加载中" description="正在读取原始表格文件并生成 Sheet 预览。" /> : null}
+      {state === "error" ? <PreviewProblem title="文件预览失败" description={message || "你可以下载原文件查看，或稍后重试。"} source={source} onReload={() => setReloadKey((value) => value + 1)} /> : null}
+      {state === "ready" && sheet ? (
+        <div className="bg-slate-100/70 p-3">
+          {sheets.length > 1 ? (
+            <div className="mb-3 flex gap-1 overflow-x-auto">
+              {sheets.map((item, index) => (
+                <button
+                  key={item.name}
+                  onClick={() => setActive(index)}
+                  className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium ${index === active ? "bg-blue-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div ref={tableScrollRef} className="max-h-[calc(100vh-260px)] overflow-auto overscroll-contain [scrollbar-gutter:stable] rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table className="min-w-full border-collapse text-sm">
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                <tr>
+                  <th className="sticky left-0 z-20 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-400">#</th>
+                  {headers.map((head, index) => (
+                    <th key={index} className="border-b border-r border-slate-200 px-4 py-2 text-left text-xs font-semibold text-slate-600">{head}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, rowIndex) => (
+                  <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/40"}>
+                    <td className="sticky left-0 border-b border-r border-slate-100 bg-inherit px-3 py-2 text-xs text-slate-400">{rowIndex + 1}</td>
+                    {headers.map((_, colIndex) => (
+                      <td key={colIndex} className="max-w-[360px] truncate border-b border-r border-slate-100 px-4 py-2 text-slate-700" title={String(row[colIndex] ?? "")}>
+                        {String(row[colIndex] ?? "")}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MarkdownContent({ source }: { source: Rec }) {
+  const raw = asText(source.rawText);
+  if (!raw) {
+    return <PreviewProblem title="暂无可预览内容" description="该 Markdown 内容还没有正文。" source={source} />;
+  }
+  return (
+    <div>
+      <PreviewToolbar title="Markdown 预览" icon={<FileText className="h-5 w-5 text-slate-500" />} source={source} />
+      <div className="mx-auto max-w-[860px] px-6 py-6">
+        <div className="prose prose-slate max-w-none text-[15px] leading-8">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{raw}</ReactMarkdown>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TextContent({ source, compact = false }: { source: Rec; compact?: boolean }) {
+  const raw = asText(source.rawText);
+  const url = asText(source.url);
+  if (!raw) {
+    return <PreviewProblem title="暂无可预览内容" description="该内容还没有正文，可能仍在处理中。" source={source} />;
+  }
+
+  if (raw.trim().startsWith("<")) {
+    return (
+      <div>
+        {!compact ? <PreviewToolbar title="文本内容预览" icon={<FileText className="h-5 w-5 text-slate-500" />} source={source} /> : null}
+        <div className="mx-auto max-w-[860px] px-6 py-6">
+          {url ? <a href={url} target="_blank" rel="noreferrer" className="mb-5 block truncate text-sm text-blue-600 hover:text-blue-700">{url}</a> : null}
+          <div className="prose prose-slate max-w-none text-[15px] leading-8" dangerouslySetInnerHTML={{ __html: sanitizePreviewHtml(raw) }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {!compact ? <PreviewToolbar title="文本内容预览" icon={<FileText className="h-5 w-5 text-slate-500" />} source={source} /> : null}
+      <div className="mx-auto max-w-[860px] px-6 py-6">
+        {url ? <a href={url} target="_blank" rel="noreferrer" className="mb-5 block truncate text-sm text-blue-600 hover:text-blue-700">{url}</a> : null}
+        <div className="whitespace-pre-wrap text-[15px] leading-8 text-slate-800">{raw}</div>
+      </div>
+    </div>
+  );
+}
+
+export default function SourceContentView({ source }: { source: Rec; chunks: Rec[] }) {
   const type = useMemo(() => classifySource(source), [source]);
+  const previewImages = asArray(previewField(source, "previewImages") || previewField(source, "preview_images")).filter((item): item is string => typeof item === "string");
+  const previewHtml = asText(previewField(source, "previewHtml")) || asText(previewField(source, "preview_html"));
+  const previewStatus = asText(previewField(source, "previewStatus") || previewField(source, "preview_status"));
+  const previewError = asText(previewField(source, "previewError") || previewField(source, "preview_error"));
 
-  // PDF: always show PDF viewer if fileId exists
-  if (type === "pdf" && hasFile(source)) return <PDFViewer source={source} />;
-  if (type === "pdf") return <EmptyState icon={<FileText className="h-10 w-10 text-slate-300" />} text="PDF 预览失败。可下载原文件查看，或稍后重试。" />;
+  if (previewStatus === "pending" || previewStatus === "processing") {
+    return <PreviewLoading />;
+  }
 
-  // Image
-  if (type === "image") return <ImageViewer source={source} />;
+  if (previewStatus === "failed" && !hasFile(source)) {
+    return <PreviewProblem title="文件预览失败" description={previewError || "你可以下载原文件查看，或稍后重试。"} source={source} />;
+  }
 
-  // Spreadsheet
-  if (type === "spreadsheet") return <SpreadsheetView source={source} />;
+  if (previewImages.length > 0) return <PageImagesPreview source={source} images={previewImages} />;
+  if (previewHtml && ["word", "ppt", "unknown"].includes(type)) return <HtmlDocumentPreview source={source} html={previewHtml} title="文件预览" />;
 
-  // Word: file action bar + extracted text
-  if (type === "word") return <FileContent source={source} icon={<FileText className="h-5 w-5 text-blue-500" />} label="Word 文档" />;
+  if (type === "image") return <ImagePreview source={source} />;
+  if (type === "pdf") return <PdfPreview source={source} />;
+  if (type === "spreadsheet") return <SpreadsheetPreview source={source} />;
+  if (type === "word") return <WordPreview source={source} />;
+  if (type === "ppt") return <PptPreview source={source} />;
+  if (type === "markdown") return <MarkdownContent source={source} />;
+  if (type === "text" || type === "link") return <TextContent source={source} />;
 
-  // PPT
-  if (type === "ppt") return <FileContent source={source} icon={<FileText className="h-5 w-5 text-orange-500" />} label="PPT 文档" />;
+  if (hasFile(source)) {
+    return (
+      <div>
+        <PreviewToolbar title="文件预览" icon={<FileText className="h-5 w-5 text-slate-500" />} source={source} />
+        <PreviewProblem title="文件预览失败" description="当前文件类型暂未生成可视化预览，你可以下载原文件查看。" source={source} />
+      </div>
+    );
+  }
 
-  // Text/link/unknown
   return <TextContent source={source} />;
 }

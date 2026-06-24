@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import TaskList from "@tiptap/extension-task-list";
@@ -21,11 +21,12 @@ import {
   Copy, Code, Heading1, Heading2, Heading3, ImageIcon,
   Italic, Link2, List, ListOrdered, ListTodo, Minus,
   Quote, Strikethrough, Table2, Trash2, Type,
-  Palette, Share2, Plus, PanelTop, Columns2, Film,
+  Plus, PanelTop, Columns2, Film,
   Grid3x3, BookTemplate, X, Highlighter,
   Indent, Outdent, AArrowDown,
 } from "lucide-react";
 import { toast } from "@/components/ui/toast";
+import { isolateWheelScroll } from "@/hooks/use-isolated-wheel-scroll";
 import { common, createLowlight } from "lowlight";
 const lowlight = createLowlight(common);
 
@@ -46,6 +47,7 @@ type Props = {
   sourceType?: string;
   onGeneratePlainText?: (text: string) => void;
   editorClassName?: string;
+  containerClassName?: string;
 };
 
 const tbBtn = "grid h-7 w-7 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-200/80 hover:text-slate-700 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-600";
@@ -112,7 +114,7 @@ function ColorPanel({
 }
 
 // ── Main Editor Component ──
-export default function KnowledgeEditor({ value, onChange, sourceType = "text", editorClassName }: Props) {
+export default function KnowledgeEditor({ value, onChange, sourceType = "text", editorClassName, containerClassName }: Props) {
   const [insertOpen, setInsertOpen] = useState(false);
   const [fontColorOpen, setFontColorOpen] = useState(false);
   const [bgColorOpen, setBgColorOpen] = useState(false);
@@ -149,6 +151,7 @@ export default function KnowledgeEditor({ value, onChange, sourceType = "text", 
       }),
     ],
     content: value,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: {
@@ -203,6 +206,33 @@ export default function KnowledgeEditor({ value, onChange, sourceType = "text", 
       cancelAnimationFrame(rafId);
     };
   }, [editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const el = editor.view.dom;
+    const onWheel = (event: WheelEvent) => isolateWheelScroll(el, event);
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [editor]);
+
+  if (!editor) {
+    return (
+      <div className={containerClassName || "rounded-[16px] border border-slate-200 bg-white overflow-hidden"}>
+        <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2">
+          <span className="h-7 w-7 rounded-lg bg-slate-200/80" />
+          <span className="h-7 w-7 rounded-lg bg-slate-200/60" />
+          <span className="h-7 w-7 rounded-lg bg-slate-200/60" />
+          <span className="h-7 w-7 rounded-lg bg-slate-200/60" />
+        </div>
+        <div
+          className={
+            editorClassName ||
+            "min-h-[280px] max-h-[360px] overflow-y-auto px-5 py-4 text-sm text-slate-800 outline-none prose-sm max-w-none"
+          }
+        />
+      </div>
+    );
+  }
 
   const chain = () => editor.chain().focus();
 
@@ -282,9 +312,9 @@ export default function KnowledgeEditor({ value, onChange, sourceType = "text", 
   ];
 
   return (
-    <div className="rounded-[16px] border border-slate-200 bg-white overflow-hidden focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50 transition">
+    <div className={containerClassName || "rounded-[16px] border border-slate-200 bg-white overflow-hidden focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50 transition"}>
       {/* ── Toolbar ── */}
-      <div className="flex flex-wrap items-center gap-px border-b border-slate-100 bg-slate-50/80 px-2 py-2 select-none">
+      <div className="shrink-0 flex flex-wrap items-center gap-px border-b border-slate-100 bg-slate-50/80 px-2 py-2 select-none">
 
         {/* 1. 文本类型 */}
         <div className={TB}>

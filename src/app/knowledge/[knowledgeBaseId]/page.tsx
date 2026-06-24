@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -9,7 +9,7 @@ import {
   Copy,
   Database,
   Download,
-  ExternalLink,
+  Eye,
   FileText,
   Link2,
   Loader2,
@@ -33,6 +33,7 @@ import KnowledgeEditor from "@/components/knowledge/knowledge-editor";
 import SourceContentView from "@/components/knowledge/source-content-view";
 import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
+import { useIsolatedWheelScroll } from "@/hooks/use-isolated-wheel-scroll";
 import { api } from "@/lib/api";
 
 type Rec = Record<string, unknown>;
@@ -219,7 +220,6 @@ function isTextLikeSource(source: Rec) {
   const sourceType = asText(source.sourceType);
   const filename = (asText(source.originalFilename) || sourceTitle(source)).toLowerCase();
   const mime = asText(source.fileMimeType).toLowerCase();
-  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")) : "";
   return sourceType === "manual"
     || sourceType === "text"
     || sourceType === "link"
@@ -227,23 +227,9 @@ function isTextLikeSource(source: Rec) {
     || mime.startsWith("text/") || mime.includes("markdown");
 }
 
-// Can be directly edited in the rich text editor (all text-based + spreadsheet types)
+// Can be directly edited in the rich text editor.
 function canEditDirectly(source: Rec) {
-  if (isTextLikeSource(source)) return true;
-  const filename = (asText(source.originalFilename) || sourceTitle(source)).toLowerCase();
-  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")) : "";
-  const mime = asText(source.fileMimeType).toLowerCase();
-  return ext === ".xlsx" || ext === ".xls" || ext === ".csv" || ext === ".tsv"
-    || mime.includes("spreadsheet") || mime.includes("excel") || mime === "text/csv"
-    || ext === ".pptx" || ext === ".ppt" || mime.includes("presentation");
-}
-
-// Is image type
-function isImageSource(source: Rec) {
-  const filename = (asText(source.originalFilename) || sourceTitle(source)).toLowerCase();
-  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")) : "";
-  const mime = asText(source.fileMimeType).toLowerCase();
-  return mime.startsWith("image/") || [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp"].includes(ext);
+  return isTextLikeSource(source);
 }
 
 function editableRawHtml(source: Rec, fallbackChunks: Rec[] = []) {
@@ -271,6 +257,7 @@ export default function KnowledgeDetailPage() {
   const [sourceTypeFilter, setSourceTypeFilter] = useState("all");
   const [sourceStatusFilter, setSourceStatusFilter] = useState("all");
   const [sourceSort, setSourceSort] = useState("updated");
+  const sourceListScrollRef = useRef<HTMLDivElement>(null);
   const [sourceMenuOpen, setSourceMenuOpen] = useState(false);
   const [editingSourceId, setEditingSourceId] = useState("");
   const [editTitle, setEditTitle] = useState("");
@@ -395,6 +382,8 @@ export default function KnowledgeDetailPage() {
     return next;
   }, [sources, sourceSearch, sourceTypeFilter, sourceStatusFilter, sourceSort]);
 
+  useIsolatedWheelScroll(sourceListScrollRef);
+
   const selectedSource = useMemo(() => {
     if (filteredSources.length === 0) return null;
     return filteredSources.find((source) => asText(source.id) === selectedSourceId) || filteredSources[0];
@@ -415,10 +404,6 @@ export default function KnowledgeDetailPage() {
       .filter((chunk) => asText(chunk.sourceId) === sourceId)
       .sort((a, b) => asNum(a.chunkIndex) - asNum(b.chunkIndex));
   }, [chunks, chunkListSource]);
-
-  const answerSources = answer
-    ? (Array.isArray(answer.sources) ? answer.sources as Rec[] : Array.isArray(answer.citations) ? answer.citations as Rec[] : [])
-    : [];
 
   function beginEditSource(source: Rec) {
     setEditingSourceId(asText(source.id));
@@ -622,39 +607,40 @@ export default function KnowledgeDetailPage() {
 
   return (
     <WorkspaceShell active="知识库" title="">
-      <div className="mb-5">
-        <Link href="/knowledge" className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-700 hover:shadow">
-          <ArrowLeft className="h-3.5 w-3.5" />返回
-        </Link>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-950">{asText(base.name)}</h1>
-            <p className="mt-1 text-sm text-slate-500">{asText(base.description, "整理资料，让 AI 基于内容回答。")}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-              <span>{visibilityLabel[asText(base.visibility, "private")] || "私有"}</span>
-              <span>·</span>
-              <span>{asText(base.updatedAt) ? `更新于 ${fmt(asText(base.updatedAt))}` : "暂无更新时间"}</span>
-              <span>·</span>
-              <span>{asNum(base.sourceCount)} 条内容</span>
+      <div className="flex min-h-[calc(100vh-76px)] flex-col py-3">
+        <div className="mb-3 shrink-0">
+          <Link href="/knowledge" className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-700 hover:shadow">
+            <ArrowLeft className="h-3.5 w-3.5" />返回
+          </Link>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-[26px] font-extrabold leading-tight text-slate-950">{asText(base.name)}</h1>
+              <p className="mt-1 text-sm text-slate-500">{asText(base.description, "整理资料，让 AI 基于内容回答。")}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span>{visibilityLabel[asText(base.visibility, "private")] || "私有"}</span>
+                <span>·</span>
+                <span>{asText(base.updatedAt) ? `更新于 ${fmt(asText(base.updatedAt))}` : "暂无更新时间"}</span>
+                <span>·</span>
+                <span>{asNum(base.sourceCount)} 条内容</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => router.push(`/knowledge/${knowledgeBaseId}/add-source`)} className="h-9 bg-blue-600 px-3 text-white hover:bg-blue-700">
+                <Upload className="h-4 w-4" />添加资料
+              </Button>
+              <Button variant="secondary" onClick={() => setAskOpen(true)} className="h-9 border border-slate-200 bg-white px-3 text-slate-700 hover:bg-slate-50">
+                <MessageCircle className="h-4 w-4" />问知识库
+              </Button>
+              <Button variant="ghost" title="知识库设置" onClick={() => setSettingsOpen(true)} className="h-9 w-9 border border-slate-200 bg-white p-0 text-slate-500 hover:bg-slate-50 hover:text-slate-800">
+                <Settings className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => router.push(`/knowledge/${knowledgeBaseId}/add-source`)} className="bg-blue-600 text-white hover:bg-blue-700">
-              <Upload className="h-4 w-4" />添加资料
-            </Button>
-            <Button variant="secondary" onClick={() => setAskOpen(true)} className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50">
-              <MessageCircle className="h-4 w-4" />问知识库
-            </Button>
-            <Button variant="ghost" title="知识库设置" onClick={() => setSettingsOpen(true)} className="border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
-      </div>
 
-      <div>
+        <div className="h-[calc(100vh-250px)] min-h-[520px] overflow-hidden">
         {sources.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center">
+          <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center">
             <FileText className="mx-auto h-10 w-10 text-slate-300" />
             <h3 className="mt-4 text-base font-bold text-slate-700">还没有知识内容</h3>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">添加文件、文档、文本或网页链接后，序光会处理内容，并用于后续检索、总结和问答。</p>
@@ -663,27 +649,27 @@ export default function KnowledgeDetailPage() {
             </Button>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="grid min-h-[720px] grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)]">
-              <aside className="border-b border-slate-200 bg-slate-50/70 lg:border-b-0 lg:border-r">
-                <div className="border-b border-slate-200 bg-white p-4">
+          <div className="h-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)]">
+              <aside className="flex min-h-0 flex-col border-b border-slate-200 bg-slate-50/70 lg:border-b-0 lg:border-r">
+                <div className="shrink-0 border-b border-slate-200 bg-white p-3">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input placeholder="搜索知识内容" value={sourceSearch} onChange={(e) => setSourceSearch(e.target.value)} className="h-10 border-slate-200 bg-slate-50 pl-9 text-sm" />
+                    <Input placeholder="搜索知识内容" value={sourceSearch} onChange={(e) => setSourceSearch(e.target.value)} className="h-9 border-slate-200 bg-slate-50 pl-9 text-sm" />
                   </div>
-                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                    <select value={sourceTypeFilter} onChange={(e) => setSourceTypeFilter(e.target.value)} className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-600 outline-none focus:border-blue-300">
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                    <select value={sourceTypeFilter} onChange={(e) => setSourceTypeFilter(e.target.value)} className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-600 outline-none focus:border-blue-300">
                       {contentTypeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                     </select>
-                    <select value={sourceStatusFilter} onChange={(e) => setSourceStatusFilter(e.target.value)} className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-600 outline-none focus:border-blue-300">
+                    <select value={sourceStatusFilter} onChange={(e) => setSourceStatusFilter(e.target.value)} className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-600 outline-none focus:border-blue-300">
                       {contentStatusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                     </select>
-                    <select value={sourceSort} onChange={(e) => setSourceSort(e.target.value)} className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-600 outline-none focus:border-blue-300">
+                    <select value={sourceSort} onChange={(e) => setSourceSort(e.target.value)} className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-600 outline-none focus:border-blue-300">
                       {contentSortOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                     </select>
                   </div>
                 </div>
-                <div className="max-h-[650px] overflow-auto p-3">
+                <div ref={sourceListScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] p-2">
                   {filteredSources.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center">
                       <Search className="mx-auto h-8 w-8 text-slate-300" />
@@ -700,15 +686,15 @@ export default function KnowledgeDetailPage() {
                           <button
                             key={id}
                             type="button"
-                            className={`group flex w-full gap-3 rounded-xl border bg-white p-3 text-left transition ${selected ? "border-blue-300 bg-blue-50/60 shadow-sm ring-2 ring-blue-50" : "border-transparent hover:border-slate-200 hover:shadow-sm"}`}
+                            className={`group flex w-full gap-2.5 rounded-xl border bg-white p-2.5 text-left transition ${selected ? "border-blue-300 bg-blue-50/60 shadow-sm ring-2 ring-blue-50" : "border-transparent hover:border-slate-200 hover:shadow-sm"}`}
                             onClick={() => openSource(source)}
                           >
-                            <div className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg ${selected ? "bg-white text-blue-700" : "bg-slate-100 text-slate-500"}`}>
+                            <div className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${selected ? "bg-white text-blue-700" : "bg-slate-100 text-slate-500"}`}>
                               {sourceIcon(sourceType)}
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-semibold text-slate-800">{sourceTitle(source)}</p>
-                              <p className="mt-1 truncate text-xs text-slate-500">{contentMetaLine(source)}</p>
+                              <p className="mt-0.5 truncate text-xs text-slate-500">{contentMetaLine(source)}</p>
                             </div>
                           </button>
                         );
@@ -718,7 +704,7 @@ export default function KnowledgeDetailPage() {
                 </div>
               </aside>
 
-              <section className="min-w-0 bg-white">
+              <section className="min-h-0 min-w-0 overflow-hidden bg-white">
                 {!selectedSource ? (
                   <div className="flex h-full min-h-[480px] flex-col items-center justify-center px-6 text-center">
                     <Database className="h-10 w-10 text-slate-300" />
@@ -734,6 +720,17 @@ export default function KnowledgeDetailPage() {
                     onCopy={(text) => copyText(text, "内容已复制。")}
                     onCopyLink={() => copySourceLink(selectedSource)}
                     onRename={() => unavailable("重命名")}
+                    onShowProcessing={() => {
+                      setProcessingDetailSource(selectedSource);
+                      setSourceMenuOpen(false);
+                    }}
+                    onShowChunks={() => {
+                      setChunkListSource(selectedSource);
+                      setSourceMenuOpen(false);
+                      if (chunks.length === 0) loadChunks();
+                    }}
+                    onReprocess={() => reprocessSource(selectedSource)}
+                    processing={processingSourceId === asText(selectedSource.id)}
                     isEditing={editingSourceId === asText(selectedSource.id)}
                     editTitle={editTitle}
                     editHtml={editHtml}
@@ -751,6 +748,7 @@ export default function KnowledgeDetailPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       <SettingsDrawer
@@ -774,10 +772,7 @@ export default function KnowledgeDetailPage() {
         onClose={() => setAskOpen(false)}
         onQuestionChange={setQuestion}
         onAsk={askBase}
-        onSelectSource={(sourceId) => {
-          setSelectedSourceId(sourceId);
-          setAskOpen(false);
-        }}
+        onOpenCitation={openCitation}
       />
 
       <ProcessingDetailModal source={processingDetailSource} base={base} onClose={() => setProcessingDetailSource(null)} />
@@ -810,7 +805,7 @@ export default function KnowledgeDetailPage() {
         footer={selectedChunk && (
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="secondary" className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" onClick={() => copyText(asText(selectedChunk.content), "引用内容已复制。")}><Copy className="h-4 w-4" />复制内容</Button>
-            <Button variant="secondary" className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" onClick={() => { setSelectedChunk(null); handleTabChange("content"); }}>查看内容</Button>
+            <Button variant="secondary" className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" onClick={() => { const sourceId = asText(selectedChunk.sourceId); if (sourceId) setSelectedSourceId(sourceId); setSelectedChunk(null); }}>查看内容</Button>
             <Button onClick={() => { setDeleteChunk(selectedChunk); setSelectedChunk(null); }} className="bg-red-600 text-white hover:bg-red-700"><Trash2 className="h-4 w-4" />删除引用</Button>
           </div>
         )}
@@ -878,7 +873,7 @@ function AskDrawer({
   onClose,
   onQuestionChange,
   onAsk,
-  onSelectSource,
+  onOpenCitation,
 }: {
   open: boolean;
   question: string;
@@ -889,7 +884,7 @@ function AskDrawer({
   onClose: () => void;
   onQuestionChange: (q: string) => void;
   onAsk: () => void;
-  onSelectSource: (sourceId: string) => void;
+  onOpenCitation: (citation: Rec) => void;
 }) {
   const citations = useMemo(() => {
     if (!answer?.sources || !Array.isArray(answer.sources)) return [];
@@ -973,14 +968,14 @@ function AskDrawer({
                     {enrichedCitations.map((cite, idx) => (
                       <button
                         key={cite.id ? asText(cite.id) : idx}
-                        onClick={() => cite.sourceId ? onSelectSource(asText(cite.sourceId)) : null}
+                        onClick={() => onOpenCitation(cite)}
                         className="flex w-full items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"
                       >
                         <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500">{idx + 1}</span>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-slate-800 truncate">{asText(cite.title) || "未命名"}</p>
                           <p className="mt-0.5 text-xs text-slate-400">
-                            {cite.sourceType} · 第 {cite.chunkIndex} 段
+                            {asText(cite.sourceType, "引用来源")} · 第 {asNum(cite.chunkIndex)} 段
                           </p>
                         </div>
                         <ChevronRight className="h-4 w-4 shrink-0 self-center text-slate-300" />
@@ -1010,6 +1005,10 @@ function SourceReader({
   onCopy,
   onCopyLink,
   onRename,
+  onShowProcessing,
+  onShowChunks,
+  onReprocess,
+  processing,
   isEditing,
   editTitle,
   editHtml,
@@ -1029,6 +1028,10 @@ function SourceReader({
   onCopy: (text: string) => void;
   onCopyLink: () => void;
   onRename: () => void;
+  onShowProcessing: () => void;
+  onShowChunks: () => void;
+  onReprocess: () => void;
+  processing: boolean;
   isEditing: boolean;
   editTitle: string;
   editHtml: string;
@@ -1043,23 +1046,30 @@ function SourceReader({
 }) {
   const text = sourcePlainText(source, chunks);
   const sourceType = asText(source.sourceType, "manual");
+  const sourceMeta = (source.metadata || {}) as Rec;
+  const originalFilename = asText(source.originalFilename) || asText(sourceMeta.originalFilename);
+  const sourceExt = (asText(source.originalFilename) || sourceTitle(source)).match(/\.[^.]+$/)?.[0] || "";
+  const downloadFilename = originalFilename || (sourceExt && !sourceTitle(source).toLowerCase().endsWith(sourceExt.toLowerCase()) ? `${sourceTitle(source)}${sourceExt}` : sourceTitle(source));
+  const previewScrollRef = useRef<HTMLElement>(null);
+
+  useIsolatedWheelScroll(previewScrollRef);
 
   return (
-    <div className="min-h-[720px] bg-white">
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-6 py-5 backdrop-blur">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
+      <div className="shrink-0 border-b border-slate-200 bg-white/95 px-5 py-3 backdrop-blur">
+        <div className="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
             {isEditing ? (
               <input
                 value={editTitle}
                 onChange={(e) => onEditTitleChange(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-2xl font-bold text-slate-950 outline-none focus:border-blue-300"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xl font-bold text-slate-950 outline-none focus:border-blue-300"
                 placeholder="输入标题"
               />
             ) : (
-              <h2 className="break-words text-2xl font-bold text-slate-950">{sourceTitle(source)}</h2>
+              <h2 className="break-words text-xl font-bold leading-tight text-slate-950">{sourceTitle(source)}</h2>
             )}
-            <p className="mt-2 text-sm text-slate-500">{contentMetaLine(source)}</p>
+            <p className="mt-1 text-sm text-slate-500">{contentMetaLine(source)}</p>
             {!isEditing && sourceType === "link" && asText(source.url) ? (
               <a href={asText(source.url)} target="_blank" rel="noreferrer" className="mt-2 block max-w-2xl truncate text-xs text-blue-600 hover:text-blue-700">{asText(source.url)}</a>
             ) : null}
@@ -1088,16 +1098,21 @@ function SourceReader({
               </>
             )}
             {!isEditing && sourceMenuOpen && (
-              <div className="absolute right-0 top-10 z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-lg">
+              <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-lg">
                 {!canEditDirectly ? (
                   <>
                     <button onClick={onStartEdit} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Pencil className="h-4 w-4" />编辑提取内容</button>
                     <button onClick={() => toast.error("创建可编辑副本暂未开放")} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50">创建可编辑副本</button>
                   </>
                 ) : null}
+                <button onClick={onShowProcessing} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><FileText className="h-4 w-4" />查看处理详情</button>
+                <button onClick={onShowChunks} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Eye className="h-4 w-4" />查看引用片段</button>
+                <button onClick={onReprocess} disabled={processing} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
+                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}重新处理
+                </button>
                 {asText(source.fileId) ? (
                   <a href={`${process.env["NEXT_PUBLIC_API_BASE_URL"] ?? "http://localhost:8000/api/v1"}/drive/files/${asText(source.fileId)}/download`}
-                    target="_blank" rel="noreferrer" download={asText(source.originalFilename) || asText(source.title)}
+                    target="_blank" rel="noreferrer" download={downloadFilename || "download"}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Download className="h-4 w-4" />下载原文件</a>
                 ) : null}
                 <button onClick={onCopyLink} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Copy className="h-4 w-4" />复制链接</button>
@@ -1111,18 +1126,21 @@ function SourceReader({
         </div>
       </div>
 
-      <article className="mx-auto max-w-4xl">
+      <article ref={previewScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
         {isEditing ? (
-          <div className="space-y-4 px-6 py-8">
-            <KnowledgeEditor
-              value={editHtml}
-              onChange={onEditHtmlChange}
-              sourceType={sourceType}
-              editorClassName="min-h-[520px] px-6 py-5 text-[15px] leading-8 text-slate-800 outline-none prose-sm max-w-none focus:outline-none"
-            />
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button onClick={onCancelEdit} disabled={savingEdit} className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 hover:bg-slate-50">取消</button>
-              <button onClick={onSaveEdit} disabled={savingEdit || !editTitle.trim()} className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-200">
+          <div className="flex h-full min-h-0 flex-col px-4 py-4">
+            <div className="min-h-0 flex-1">
+              <KnowledgeEditor
+                value={editHtml}
+                onChange={onEditHtmlChange}
+                sourceType={sourceType}
+                containerClassName="flex h-full min-h-0 flex-col overflow-hidden rounded-[16px] border border-slate-200 bg-white transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50"
+                editorClassName="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 text-[15px] leading-8 text-slate-800 outline-none prose-sm max-w-none focus:outline-none"
+              />
+            </div>
+            <div className="mt-3 flex shrink-0 justify-end gap-2 border-t border-slate-100 pt-3">
+              <button onClick={onCancelEdit} disabled={savingEdit} className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 hover:bg-slate-50">取消</button>
+              <button onClick={onSaveEdit} disabled={savingEdit || !editTitle.trim()} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-200">
                 {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : null}保存
               </button>
             </div>

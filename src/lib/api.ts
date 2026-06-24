@@ -108,11 +108,14 @@ async function download(path: string): Promise<{ blob: Blob; filename: string }>
     throw new Error(data.detail || data.error || `请求失败：${response.status}`);
   }
   const disposition = response.headers.get("Content-Disposition") ?? "";
-  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
-  const plain = disposition.match(/filename="?([^";]+)"?/)?.[1];
+  const encoded = disposition.match(/filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i)?.[1]?.trim().replace(/^"|"$/g, "");
+  const plain = disposition.match(/filename\s*=\s*"?([^";]+)"?/i)?.[1]?.trim();
+  const filename = encoded
+    ? decodeURIComponent(encoded)
+    : plain || "download";
   return {
     blob: await response.blob(),
-    filename: encoded ? decodeURIComponent(encoded) : plain || "download",
+    filename,
   };
 }
 

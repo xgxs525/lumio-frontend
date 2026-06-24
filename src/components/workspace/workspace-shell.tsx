@@ -49,6 +49,7 @@ import {
   type StoredAuth,
   updateStoredIdentity,
 } from "@/lib/auth";
+import { useIsolatedWheelScroll } from "@/hooks/use-isolated-wheel-scroll";
 import { cn } from "@/lib/utils";
 
 type WorkspaceShellProps = {
@@ -418,6 +419,9 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLFormElement>(null);
+  const sidebarNavRef = useRef<HTMLElement>(null);
+
+  useIsolatedWheelScroll(sidebarNavRef);
 
   // Click outside to close search dropdown
   useEffect(() => {
@@ -567,7 +571,7 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
             </span>
           </div>
 
-          <nav className="mt-8 flex-1 space-y-1 overflow-y-auto pr-1">
+          <nav ref={sidebarNavRef} className="mt-8 flex-1 space-y-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] pr-1">
             {sidebarSections.map((section) => (
               <div key={section.title}>
                 {!sidebarCollapsed ? (
