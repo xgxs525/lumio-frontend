@@ -724,7 +724,7 @@ export function VideoHomePage() {
               </Link>
             </div>
 
-            <div className="mt-4 grid gap-2 md:grid-cols-4">
+            <div className="mt-4 grid gap-3 md:grid-cols-4">
               {(Object.keys(generationModeCopy) as GenerationType[]).map((mode) => {
                 const Icon = generationModeIcons[mode];
                 const disabled = !selectedModel || !supportsGenerationType(selectedModel, mode);
@@ -736,13 +736,18 @@ export function VideoHomePage() {
                     disabled={disabled}
                     title={disabled ? "当前模型不支持该生成方式" : undefined}
                     className={cn(
-                      "min-h-[72px] rounded-2xl border px-4 py-3 text-left transition",
+                      "flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition",
                       homeMode === mode ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
                       disabled && "cursor-not-allowed bg-slate-100 text-slate-300 hover:bg-slate-100",
                     )}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span className="mt-1 block truncate text-xs font-black">{generationModeCopy[mode].label}</span>
+                    <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", homeMode === mode ? "bg-blue-100" : "bg-slate-100")}>
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-black">{generationModeCopy[mode].label}</span>
+                      <span className="mt-0.5 block truncate text-[11px] text-slate-400">{generationModeCopy[mode].desc}</span>
+                    </span>
                   </button>
                 );
               })}
@@ -846,14 +851,19 @@ function UploadCard({
     <button
       type="button"
       onClick={onPick}
+      disabled={!onPick}
       className={cn(
-        "flex h-28 w-full flex-col items-center justify-center rounded-2xl border border-dashed bg-white text-slate-500 transition hover:border-blue-300 hover:bg-blue-50/50",
-        selected ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-300",
+        "flex min-h-[88px] w-full flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed px-4 py-5 transition",
+        selected
+          ? "border-blue-300 bg-blue-50 text-blue-700"
+          : onPick
+            ? "border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50/30"
+            : "border-slate-200 bg-slate-50 text-slate-400 cursor-default",
       )}
     >
-      {selected ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
-      <span className="mt-2 text-xs font-bold">{selected ? "素材已选择" : label}</span>
-      <span className="mt-0.5 text-[11px] text-slate-400">
+      {selected ? <Check className="h-6 w-6" /> : <Icon className="h-6 w-6" />}
+      <span className="text-sm font-bold">{selected ? "已选择" : label}</span>
+      <span className="text-[11px] text-slate-400">
         {type === "video" ? "MP4 / MOV / WebM" : type === "image" ? "JPG / PNG / WebP" : "图片 / 视频 / 脚本文件"}
       </span>
     </button>
@@ -1529,24 +1539,31 @@ export function VideoCreatePage({ initialModelId }: { initialModelId?: string })
                   {generationType === "video" ? <UploadCard type="video" label="上传参考视频" selected={hasVideoReference} onPick={() => setHasVideoReference(true)} /> : null}
                   {generationType === "text" || generationType === "storyboard" ? <UploadCard type="material" label="上传参考素材" /> : null}
 
-                  <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
                     <div className="flex items-center gap-2 text-sm font-black text-blue-700">
                       <BadgeCheck className="h-4 w-4" />
                       模型智能推荐
                     </div>
-                    <div className="mt-2 space-y-1.5">
+                    <div className="mt-3 space-y-2">
                       {recommendedModelIds.map((modelId) => {
                         const model = findVideoModel(models, modelId);
                         if (!model) return null;
+                        const available = model.status === "available";
                         return (
                           <button
                             key={model.id}
                             type="button"
-                            onClick={() => selectModel(model)}
-                            disabled={model.status !== "available"}
-                            className="block w-full rounded-lg bg-white px-3 py-2 text-left text-xs font-bold text-slate-700 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-300"
+                            onClick={() => available && selectModel(model)}
+                            disabled={!available}
+                            className="flex w-full items-center gap-3 rounded-xl bg-white px-4 py-3 text-left transition hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {model.displayName}
+                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-xs font-black text-slate-500">
+                              {model.provider[0]}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-bold text-slate-800">{model.displayName}</p>
+                              <p className="mt-0.5 truncate text-[11px] text-slate-400">{model.provider} · {model.status === "coming" ? "即将接入" : model.status === "maintenance" ? "维护中" : "可用"}</p>
+                            </div>
                           </button>
                         );
                       })}
