@@ -709,7 +709,7 @@ export function VideoHomePage() {
           ) : null}
         </section>
 
-        <section ref={createSectionRef} id="home-create-input" className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <section ref={createSectionRef} id="home-create-input" className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
           <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -736,7 +736,7 @@ export function VideoHomePage() {
                     disabled={disabled}
                     title={disabled ? "当前模型不支持该生成方式" : undefined}
                     className={cn(
-                      "min-h-16 rounded-2xl border px-3 py-2 text-left transition",
+                      "min-h-[72px] rounded-2xl border px-4 py-3 text-left transition",
                       homeMode === mode ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
                       disabled && "cursor-not-allowed bg-slate-100 text-slate-300 hover:bg-slate-100",
                     )}
@@ -752,7 +752,7 @@ export function VideoHomePage() {
               value={homePrompt}
               onChange={(event) => setHomePrompt(event.target.value)}
               placeholder={homeMode === "storyboard" ? "输入故事主题或脚本，序光会拆成分镜画面。" : "描述画面、动作和镜头，例如：电影感广告片，产品从清晨光线里被缓慢推近。"}
-              rows={4}
+              rows={5}
               className="mt-4 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-50"
             />
 
@@ -1481,7 +1481,7 @@ export function VideoCreatePage({ initialModelId }: { initialModelId?: string })
                         value={storyTheme}
                         onChange={(event) => setStoryTheme(event.target.value)}
                         placeholder="输入故事或脚本，例如：一个新产品从清晨实验室走向城市街头，被不同用户自然使用。"
-                        rows={7}
+                        rows={8}
                         className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-50"
                       />
                     </div>
@@ -1492,7 +1492,7 @@ export function VideoCreatePage({ initialModelId }: { initialModelId?: string })
                         value={prompt}
                         onChange={(event) => setPrompt(event.target.value)}
                         placeholder="描述你想生成的视频，例如：电影感广告片，产品从清晨光线里被缓慢推近，金属材质，高级质感。"
-                        rows={7}
+                        rows={8}
                         className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-50"
                       />
                     </div>
@@ -1513,11 +1513,12 @@ export function VideoCreatePage({ initialModelId }: { initialModelId?: string })
                   {generationType !== "storyboard" ? (
                     <div>
                       <label className="text-xs font-bold text-slate-500">反向提示词</label>
-                      <input
+                      <textarea
                         value={negativePrompt}
                         onChange={(event) => setNegativePrompt(event.target.value)}
                         placeholder="不想出现的内容，例如：低清晰度、画面闪烁、文字水印、人物畸形"
-                        className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                        rows={3}
+                        className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
                       />
                     </div>
                   ) : null}
