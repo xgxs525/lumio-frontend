@@ -13,16 +13,12 @@ import {
   FolderOpen,
   FolderPlus,
   Loader2,
-  MoreHorizontal,
   Plus,
   Presentation,
   RefreshCw,
-  Share2,
-  Sparkles,
   Table,
   Trash2,
   Upload,
-  WandSparkles,
 } from "lucide-react";
 
 import { AppModal } from "@/components/ui/app-modal";
@@ -191,7 +187,7 @@ export default function FolderDetailPage({ params }: { params: Promise<{ folderI
   async function handlePreview(fileId: string) {
     setBusy(true);
     try {
-      const result = await api.previewDriveFile(fileId);
+      await api.previewDriveFile(fileId);
       toast.info("预览功能已打开。");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "预览失败");

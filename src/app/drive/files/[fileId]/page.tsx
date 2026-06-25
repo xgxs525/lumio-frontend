@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Braces, Download, Eye, FileText, Loader2, RefreshCw, Save, Sparkles, WandSparkles } from "lucide-react";
+import { ArrowLeft, Braces, Download, Loader2, RefreshCw, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { api } from "@/lib/api";
@@ -48,7 +47,6 @@ export default function DriveFileEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [objectUrl, setObjectUrl] = useState("");
 
   const ext = asText(file.extension, asText(fileName(file).match(/\.[^.]+$/)?.[0], "")).toLowerCase();
@@ -176,7 +174,6 @@ export default function DriveFileEditorPage() {
       }
     >
       {error && <div className="mb-5 rounded-2xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
-      {notice && <div className="mb-5 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm text-cyan-50">{notice}</div>}
 
       {/* Meta info */}
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

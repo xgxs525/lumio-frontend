@@ -11,7 +11,6 @@ import {
   FileText,
   FolderOpen,
   FolderPlus,
-  HardDrive,
   Loader2,
   MoreHorizontal,
   Plus,
