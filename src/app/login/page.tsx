@@ -100,7 +100,7 @@ export default function LoginPage() {
               邮箱 / 手机号
               <Input
                 autoComplete="username"
-                className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
+                className="h-9 border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
                 onChange={(event) => setAccount(event.target.value)}
                 placeholder="请输入邮箱或手机号"
                 value={account}
@@ -110,7 +110,7 @@ export default function LoginPage() {
               密码
               <Input
                 autoComplete="current-password"
-                className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
+                className="h-9 border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="请输入密码"
                 type="password"
@@ -128,7 +128,7 @@ export default function LoginPage() {
                 />
                 记住我
               </label>
-              <Link href="/help/account" className="font-semibold text-slate-900 underline underline-offset-2 hover:text-blue-700">
+              <Link href="/forgot-password" className="font-semibold text-slate-900 underline underline-offset-2 hover:text-blue-700">
                 忘记密码？
               </Link>
             </div>

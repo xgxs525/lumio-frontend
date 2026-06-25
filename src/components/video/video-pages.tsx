@@ -66,6 +66,13 @@ const generationModeIcons: Record<GenerationType, LucideIcon> = {
   storyboard: Layers3,
 };
 
+const generationModeCompactCopy: Record<GenerationType, { label: string; desc: string }> = {
+  text: { label: "文生视频", desc: "提示词生成镜头" },
+  image: { label: "图生视频", desc: "上传参考图片" },
+  video: { label: "视频参考", desc: "基于素材续写" },
+  storyboard: { label: "分镜生成", desc: "脚本拆成镜头" },
+};
+
 const modelStatusLabel: Record<ModelStatus, string> = {
   available: "可用",
   coming: "即将上线",
@@ -94,7 +101,7 @@ const thumbnailToneClass: Record<VideoGenerationTask["thumbnailTone"], string> =
   rose: "from-slate-950 via-rose-900 to-orange-400",
 };
 
-const MODELS_PER_PAGE = 9;
+const MODELS_PER_PAGE = 12;
 
 function useVideoModels() {
   const [models, setModels] = useState<VideoModel[]>([]);
@@ -407,34 +414,34 @@ function ModelCard({
   return (
     <article
       className={cn(
-        "flex min-h-[240px] flex-col rounded-[18px] border bg-white p-5 shadow-sm transition",
+        "flex min-h-[170px] flex-col rounded-[14px] border bg-white p-3.5 shadow-sm transition",
         selected ? "border-blue-300 ring-4 ring-blue-50" : "border-slate-200 hover:border-blue-200 hover:shadow-md",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-base font-black text-slate-950">{model.displayName}</p>
-          <p className="mt-1 truncate text-xs font-semibold text-slate-500">平台：{model.provider}</p>
+          <p className="truncate text-sm font-black text-slate-950">{model.displayName}</p>
+          <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">平台：{model.provider}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {model.isRecommended ? (
-            <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">推荐</span>
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">推荐</span>
           ) : null}
           <ModelStatusPill status={model.status} />
         </div>
       </div>
 
-      <p className="mt-2.5 line-clamp-2 min-h-[36px] text-sm leading-5 text-slate-500">{model.description}</p>
+      <p className="mt-1.5 line-clamp-2 min-h-[30px] text-xs leading-5 text-slate-500">{model.description}</p>
 
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
+      <div className="mt-1.5 flex flex-wrap gap-1">
         {model.tags.slice(0, 3).map((tag) => (
-          <span key={tag} className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
+          <span key={tag} className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
             {tag}
           </span>
         ))}
       </div>
 
-      <div className="mt-3 grid gap-1.5 text-xs text-slate-500">
+      <div className="mt-2 grid gap-1 text-xs text-slate-500">
         <p className="truncate">
           <span className="font-semibold text-slate-700">输入：</span>
           {model.inputTypes.join("、")}
@@ -445,27 +452,27 @@ function ModelCard({
         </p>
       </div>
 
-      <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
+      <div className="mt-auto grid grid-cols-2 gap-2 pt-2">
         {available ? (
           <button
             type="button"
             onClick={() => onSelect?.(model)}
             className={cn(
-              "h-9 rounded-xl text-sm font-bold transition",
+              "h-8 rounded-lg text-xs font-bold transition",
               selected ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-blue-600 text-white hover:bg-blue-700",
             )}
           >
             {selected ? "已选择" : "选择模型"}
           </button>
         ) : (
-          <button type="button" disabled className="h-9 cursor-not-allowed rounded-xl bg-slate-100 text-sm font-bold text-slate-400">
+          <button type="button" disabled className="h-8 cursor-not-allowed rounded-lg bg-slate-100 text-xs font-bold text-slate-400">
             等待接入
           </button>
         )}
         <button
           type="button"
           onClick={() => onDetail(model)}
-          className="h-9 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50"
+          className="h-8 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50"
         >
           查看详情
         </button>
@@ -560,7 +567,7 @@ export function VideoHomePage() {
   }
 
   return (
-    <WorkspaceShell active="视频创作" title="">
+    <WorkspaceShell active="创作空间" title="">
       <div className="space-y-5 py-5">
         <section className="flex flex-col gap-3 rounded-[20px] border border-slate-200 bg-white px-5 py-4 shadow-sm xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
@@ -611,7 +618,6 @@ export function VideoHomePage() {
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <h2 className="text-base font-black text-slate-950">选择视频模型</h2>
-              <p className="mt-1 text-sm text-slate-500">每页 9 个模型，选择后会同步到下方创作输入区。</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative">
@@ -709,11 +715,11 @@ export function VideoHomePage() {
           ) : null}
         </section>
 
-        <section ref={createSectionRef} id="home-create-input" className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
+        <section ref={createSectionRef} id="home-create-input" className="grid scroll-mt-24 gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
           <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h2 className="text-base font-black text-slate-950">创作输入区</h2>
+                <h2 className="text-[15px] font-black leading-6 text-slate-950">创作输入区</h2>
                 <p className="mt-1 text-sm text-slate-500">
                   当前模型：<span className="font-bold text-slate-800">{selectedModel?.displayName || "正在加载模型"}</span>
                   <span className="ml-2 text-slate-400">适合：{selectedModel?.useCases.slice(0, 3).join("、") || "-"}</span>
@@ -724,7 +730,7 @@ export function VideoHomePage() {
               </Link>
             </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {(Object.keys(generationModeCopy) as GenerationType[]).map((mode) => {
                 const Icon = generationModeIcons[mode];
                 const disabled = !selectedModel || !supportsGenerationType(selectedModel, mode);
@@ -736,17 +742,17 @@ export function VideoHomePage() {
                     disabled={disabled}
                     title={disabled ? "当前模型不支持该生成方式" : undefined}
                     className={cn(
-                      "flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition",
+                      "flex min-h-[74px] items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left transition",
                       homeMode === mode ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
                       disabled && "cursor-not-allowed bg-slate-100 text-slate-300 hover:bg-slate-100",
                     )}
                   >
-                    <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", homeMode === mode ? "bg-blue-100" : "bg-slate-100")}>
-                      <Icon className="h-5 w-5" />
+                    <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-xl", homeMode === mode ? "bg-blue-100" : "bg-slate-100")}>
+                      <Icon className="h-4 w-4" />
                     </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-black">{generationModeCopy[mode].label}</span>
-                      <span className="mt-0.5 block truncate text-[11px] text-slate-400">{generationModeCopy[mode].desc}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block whitespace-nowrap text-[13px] font-black leading-5">{generationModeCompactCopy[mode].label}</span>
+                      <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">{generationModeCompactCopy[mode].desc}</span>
                     </span>
                   </button>
                 );
@@ -1059,16 +1065,8 @@ function WaitingResult({ onGenerate, disabled }: { onGenerate: () => void; disab
       </div>
       <h3 className="mt-4 text-base font-black text-slate-800">等待生成视频</h3>
       <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
-        输入提示词并设置参数后，点击生成视频。
+        输入提示词并设置参数后，点击下方生成按钮。
       </p>
-      <button
-        type="button"
-        onClick={onGenerate}
-        disabled={disabled}
-        className="mt-4 h-10 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-      >
-        生成视频
-      </button>
     </div>
   );
 }
@@ -1421,7 +1419,7 @@ export function VideoCreatePage({ initialModelId }: { initialModelId?: string })
   };
 
   return (
-    <WorkspaceShell active="视频创作" title="">
+    <WorkspaceShell active="创作空间" title="">
       <div className="space-y-6 py-6">
         <section className="flex flex-col gap-4 rounded-[20px] border border-slate-200 bg-white px-5 py-4 shadow-sm xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-3">
@@ -1455,7 +1453,7 @@ export function VideoCreatePage({ initialModelId }: { initialModelId?: string })
                 {selectedModel ? <ModelStatusPill status={selectedModel.status} /> : null}
               </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 {(Object.keys(generationModeCopy) as GenerationType[]).map((mode) => {
                   const Icon = generationModeIcons[mode];
                   const disabled = selectedModel ? !supportsGenerationType(selectedModel, mode) : false;
@@ -1467,16 +1465,20 @@ export function VideoCreatePage({ initialModelId }: { initialModelId?: string })
                       disabled={disabled}
                       title={disabled ? "当前模型不支持该生成方式" : undefined}
                       className={cn(
-                        "min-h-24 rounded-2xl border p-3 text-left transition",
+                        "flex min-h-[78px] items-center gap-2.5 rounded-2xl border p-3 text-left transition",
                         generationType === mode
                           ? "border-blue-300 bg-blue-50 text-blue-700"
                           : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50/40",
                         disabled && "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300 hover:border-slate-200 hover:bg-slate-100",
                       )}
                     >
-                      <Icon className="h-5 w-5" />
-                      <span className="mt-2 block text-sm font-black">{generationModeCopy[mode].label}</span>
-                      <span className="mt-1 block text-xs leading-5">{generationModeCopy[mode].desc}</span>
+                      <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-xl", generationType === mode ? "bg-blue-100" : "bg-slate-100")}>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block whitespace-nowrap text-[13px] font-black leading-5">{generationModeCompactCopy[mode].label}</span>
+                        <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">{generationModeCompactCopy[mode].desc}</span>
+                      </span>
                     </button>
                   );
                 })}
@@ -1725,25 +1727,6 @@ export function VideoCreatePage({ initialModelId }: { initialModelId?: string })
                 ) : null}
               </div>
             </div>
-
-            <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-black text-slate-950">最近生成记录</h2>
-                <Link href="/video/history" className="text-xs font-bold text-blue-600 hover:text-blue-700">
-                  查看全部
-                </Link>
-              </div>
-              <div className="mt-3 space-y-3">
-                {recentTasks.map((task) => (
-                  <RecentTaskCard key={task.id} task={task} />
-                ))}
-                {!recentTasks.length ? (
-                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs font-bold text-slate-400">
-                    还没有生成记录
-                  </p>
-                ) : null}
-              </div>
-            </div>
           </aside>
         </section>
       </div>
@@ -1842,7 +1825,7 @@ export function VideoHistoryPage() {
   }
 
   return (
-    <WorkspaceShell active="视频创作" title="">
+    <WorkspaceShell active="创作空间" title="">
       <div className="space-y-6 py-6">
         <section className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -2040,7 +2023,7 @@ export function VideoTaskDetailPage({ taskId }: { taskId: string }) {
 
   if (loading) {
     return (
-      <WorkspaceShell active="视频创作" title="">
+      <WorkspaceShell active="创作空间" title="">
         <div className="py-16 text-center">
           <Loader2 className="mx-auto h-9 w-9 animate-spin text-blue-500" />
           <p className="mt-4 text-sm font-bold text-slate-500">正在从数据库读取任务详情</p>
@@ -2051,7 +2034,7 @@ export function VideoTaskDetailPage({ taskId }: { taskId: string }) {
 
   if (!task) {
     return (
-      <WorkspaceShell active="视频创作" title="">
+      <WorkspaceShell active="创作空间" title="">
         <div className="py-16 text-center">
           <AlertTriangle className="mx-auto h-9 w-9 text-rose-500" />
           <h1 className="mt-4 text-lg font-black text-slate-800">{loadError || "视频任务不存在"}</h1>
@@ -2064,7 +2047,7 @@ export function VideoTaskDetailPage({ taskId }: { taskId: string }) {
   }
 
   return (
-    <WorkspaceShell active="视频创作" title="">
+    <WorkspaceShell active="创作空间" title="">
       <div className="space-y-6 py-6">
         <section className="flex flex-col gap-4 rounded-[20px] border border-slate-200 bg-white px-5 py-4 shadow-sm xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-3">

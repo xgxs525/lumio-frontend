@@ -31,7 +31,6 @@ type PreviewKind = "image" | "pdf" | "spreadsheet" | "word" | "ppt" | "markdown"
 type SheetPreview = { name: string; rows: Array<Array<string | number | boolean | null>> };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
-const PDF_WORKER_SRC = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
 
 function asText(v: unknown, fallback = "") {
   return typeof v === "string" ? v : fallback;
@@ -386,7 +385,7 @@ function PdfPreview({ source }: { source: Rec }) {
         import("pdfjs-dist"),
         api.downloadDriveFile(fileId),
       ]);
-      pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.0.227/build/pdf.worker.min.mjs";
       const buffer = await download.blob.arrayBuffer();
       const loaded = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
       setDoc(loaded);

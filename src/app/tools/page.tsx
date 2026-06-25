@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { FileSpreadsheet, Sparkles, Wand2 } from "lucide-react";
+import { FileSpreadsheet, Sparkles, WandSparkles } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const tools = [
   { href: "/split", title: "表格拆分", description: "按列值、行数或工作表拆分常见表格文件。", icon: FileSpreadsheet },
   { href: "/ai", title: "AI 助手", description: "公式、分析、文档整理与办公问答。", icon: Sparkles },
-  { href: "/templates", title: "模板中心", description: "浏览公开办公模板，并带入工作台复用。", icon: Wand2 },
+  { href: "/templates", title: "模板中心", description: "浏览公开办公模板，并带入工作台复用。", icon: WandSparkles },
 ];
 
 export default function ToolsPage() {

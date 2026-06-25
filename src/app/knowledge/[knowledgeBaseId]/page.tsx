@@ -463,6 +463,19 @@ export default function KnowledgeDetailPage() {
     }
   }
 
+  async function updateSourceTitle(source: Rec, newTitle: string) {
+    setSaving(true);
+    try {
+      await api.updateKnowledgeSource(knowledgeBaseId, asText(source.id), { title: newTitle });
+      setSources((prev) => prev.map((s) => asText(s.id) === asText(source.id) ? { ...s, title: newTitle } : s));
+      toast.success("资料名称已更新。");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "重命名失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function removeChunk() {
     if (!deleteChunk) return;
     setSaving(true);
@@ -540,6 +553,10 @@ export default function KnowledgeDetailPage() {
         name: settingsForm.name,
         description: settingsForm.description,
         visibility: settingsForm.visibility,
+        defaultModel: settingsForm.defaultModel,
+        processMode: settingsForm.processMode,
+        generateSummary: settingsForm.generateSummary,
+        extractKeywords: settingsForm.extractKeywords,
       });
       setBase((prev) => prev ? { ...prev, name: settingsForm.name, description: settingsForm.description, visibility: settingsForm.visibility } : prev);
       setSettingsOpen(false);
@@ -719,7 +736,13 @@ export default function KnowledgeDetailPage() {
                     setSourceMenuOpen={setSourceMenuOpen}
                     onCopy={(text) => copyText(text, "内容已复制。")}
                     onCopyLink={() => copySourceLink(selectedSource)}
-                    onRename={() => unavailable("重命名")}
+                    onRename={() => {
+                      setSourceMenuOpen(false);
+                      const newName = window.prompt("资料名称：", asText(selectedSource.title) || asText(selectedSource.name, ""));
+                      if (newName?.trim()) {
+                        updateSourceTitle(selectedSource, newName.trim());
+                      }
+                    }}
                     onShowProcessing={() => {
                       setProcessingDetailSource(selectedSource);
                       setSourceMenuOpen(false);
@@ -758,7 +781,16 @@ export default function KnowledgeDetailPage() {
         onClose={() => setSettingsOpen(false)}
         onChange={setSettingsForm}
         onSave={saveSettings}
-        onDisable={() => toast.error("停用知识库暂未开放")}
+        onDisable={async () => {
+          try {
+            await api.updateKnowledgeBase(knowledgeBaseId, { status: "disabled" });
+            toast.success("知识库已停用。");
+            setSettingsOpen(false);
+            router.push("/knowledge");
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "停用失败");
+          }
+        }}
         onDelete={openDeleteModal}
       />
 
@@ -1233,7 +1265,7 @@ function SettingsDrawer({
                 </div>
               ))}
             </div>
-            <button onClick={() => toast.error("添加成员暂未开放")} className="mt-3 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">添加成员</button>
+            <button onClick={() => toast.info("成员管理功能即将上线，敬请期待。")} className="mt-3 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">添加成员</button>
           </SettingsSection>
 
           <SettingsSection title="危险操作">

@@ -102,7 +102,7 @@ export default function RegisterPage() {
               邮箱 / 手机号
               <Input
                 autoComplete="username"
-                className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
+                className="h-9 border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
                 onChange={(event) => setAccount(event.target.value)}
                 placeholder="请输入邮箱或手机号"
                 value={account}
@@ -112,7 +112,7 @@ export default function RegisterPage() {
               密码
               <Input
                 autoComplete="new-password"
-                className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
+                className="h-9 border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="至少 6 位密码"
                 type="password"
@@ -123,7 +123,7 @@ export default function RegisterPage() {
               确认密码
               <Input
                 autoComplete="new-password"
-                className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
+                className="h-9 border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 placeholder="再次输入密码"
                 type="password"

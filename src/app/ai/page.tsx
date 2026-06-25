@@ -552,7 +552,7 @@ export default function AiPage() {
   //  RENDER
   // ═══════════════════════════════════════════════════════════
   return (
-    <WorkspaceShell active="AI 助手" title="" subtitle="">
+    <WorkspaceShell active="任务中心" title="" subtitle="">
       <div className="flex h-[calc(100vh-76px)] overflow-hidden bg-[#F7F9FC]">
         {/* ── Session Sidebar ─────────────────────────────── */}
         <aside className="flex w-[280px] shrink-0 flex-col border-r border-slate-200 bg-white">

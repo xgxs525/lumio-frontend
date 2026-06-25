@@ -296,18 +296,7 @@ export default function KnowledgeEditor({ value, onChange, sourceType = "text", 
       { label: "表格", icon: Table2, action: addTable },
       { label: "分栏", icon: Columns2, action: addColumnsBlock },
       { label: "高亮块", icon: Highlighter, action: addHighlightBlock },
-      { label: "按钮", icon: PanelTop, action: () => chain().insertContent('<span class="inline-block rounded-full bg-blue-600 text-white px-4 py-1.5 text-sm font-semibold cursor-pointer">按钮</span>').run() },
       { label: "子文档", icon: BookTemplate, action: addSubDoc },
-    ]},
-    { group: "进阶块", items: [
-      { label: "网页卡片", icon: Link2, action: () => chain().insertContent('<div contenteditable="false" class="rounded-xl border border-slate-200 p-4 my-2 text-xs text-slate-400">🃏 网页卡片预留</div>').run() },
-      { label: "时间轴", icon: Minus, action: () => chain().insertContent('<div contenteditable="false" class="rounded-xl border border-slate-200 p-4 my-2 text-xs text-slate-400">📅 时间轴预留</div>').run() },
-      { label: "倒计时", icon: Minus, action: () => chain().insertContent('<div contenteditable="false" class="rounded-xl border border-slate-200 p-4 my-2 text-xs text-slate-400">⏳ 倒计时预留</div>').run() },
-    ]},
-    { group: "数据块（即将支持）", items: [
-      { label: "看板", icon: Grid3x3, action: () => toast.info("即将支持") },
-      { label: "甘特图", icon: Grid3x3, action: () => toast.info("即将支持") },
-      { label: "画册", icon: Grid3x3, action: () => toast.info("即将支持") },
     ]},
   ];
 

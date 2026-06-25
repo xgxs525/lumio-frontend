@@ -194,6 +194,23 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
+  forgotPassword: (payload: { account: string }) =>
+    request<ApiResponse<{ message: string; token: string | null; code: string | null; sent: boolean; expiresIn: number }>>(
+      "/auth/forgot-password",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    ),
+
+  resetPassword: (payload: { token: string; code?: string; new_password: string }) =>
+    request<ApiResponse<{ message: string }>>("/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+
   updateProfile: (payload: {
     name?: string;
     phone?: string;
@@ -337,6 +354,13 @@ export const api = {
 
   getDriveFile: (fileId: string) =>
     request<ApiResponse<DriveFile>>(`/drive/files/${fileId}`),
+
+  updateDriveFile: (fileId: string, payload: { content?: string; name?: string }) =>
+    request<ApiResponse<DriveFile>>(`/drive/files/${fileId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
 
   createUploadUrl: (payload: { filename: string; size?: number; mime_type?: string; folder_id?: string }) =>
     request<ApiResponse<Record<string, unknown>>>("/drive/files/create-upload-url", {
@@ -888,5 +912,15 @@ export const api = {
 
   enterpriseBillingOverview: () =>
     request<ApiResponse<Record<string, unknown>>>("/billing/enterprise/overview"),
+
+  listModels: (params?: { category?: string; search?: string; recommended_only?: boolean; page?: number; page_size?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.category) query.set("category", params.category);
+    if (params?.search) query.set("search", params.search);
+    if (params?.recommended_only) query.set("recommended_only", "true");
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.page_size) query.set("page_size", String(params.page_size));
+    return request<ApiResponse<{ items: Array<Record<string, unknown>>; total: number }>>(`/models?${query.toString()}`);
+  },
 };
 

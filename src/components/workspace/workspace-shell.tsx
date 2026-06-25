@@ -5,37 +5,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  BarChart3,
   Bot,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
-  Clock,
   Cloud,
   CreditCard,
   DatabaseZap,
-  FileSearch,
   FileText,
-  Film,
   Globe2,
   Headphones,
-  ImageIcon,
   LayoutDashboard,
   LogOut,
   MessageCircle,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ReceiptText,
   Search,
   Settings,
-  ShieldCheck,
   Smile,
   Sparkles,
-  TicketPercent,
-  UserRound,
-  WalletCards,
+  WandSparkles,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -80,38 +68,27 @@ const sidebarSections: NavSection[] = [
     title: "核心功能",
     items: [
       { href: "/workspace", label: "工作台", icon: LayoutDashboard },
-      { href: "/ai", label: "智能任务", icon: Bot },
+      { href: "/tasks", label: "任务中心", icon: Bot },
       { href: "/models", label: "模型广场", icon: Sparkles },
-      { href: "/file-understand", label: "文件理解", icon: FileSearch },
-      { href: "/image-gen", label: "图像生成", icon: ImageIcon },
-      { href: "/video", label: "视频创作", icon: Film },
     ],
   },
   {
-    title: "内容资产",
+    title: "内容与创作",
     items: [
-      { href: "/drive", label: "云盘", icon: Cloud },
+      { href: "/creation", label: "创作空间", icon: WandSparkles },
       { href: "/knowledge", label: "知识库", icon: DatabaseZap },
-      { href: "/history", label: "历史记录", icon: Clock },
-    ],
-  },
-  {
-    title: "账户",
-    items: [
-      { href: "/billing", label: "账单与额度", icon: CreditCard },
-      { href: "/settings", label: "账号设置", icon: Settings },
+      { href: "/drive", label: "云盘", icon: Cloud },
     ],
   },
 ];
 
 const searchableItems = [
-  { href: "/workspace", label: "工作台", desc: "多模型 AI 平台使用中心" },
-  { href: "/ai", label: "智能任务", desc: "选择模型或智能推荐，完成各类 AI 任务" },
+  { href: "/workspace", label: "工作台", desc: "平台总览与快捷入口" },
+  { href: "/tasks", label: "任务中心", desc: "写作、翻译、分析、编程等 AI 任务" },
   { href: "/models", label: "模型广场", desc: "浏览和比较已接入的 AI 模型" },
-  { href: "/image-gen", label: "图像生成", desc: "输入提示词，生成图片、封面和视觉素材" },
-  { href: "/video", label: "视频创作", desc: "选择视频模型，生成短视频、分镜和动态视觉内容" },
+  { href: "/creation", label: "创作空间", desc: "图像生成、视频创作和视觉素材" },
   { href: "/drive", label: "云盘", desc: "上传文件，让 AI 读取和分析" },
-  { href: "/knowledge", label: "知识库", desc: "沉淀长期资料，让 AI 基于你的内容回答" },
+  { href: "/knowledge", label: "知识库", desc: "沉淀长期资料，基于你的内容问答" },
   { href: "/billing", label: "账单与额度", desc: "套餐、订单、支付和额度" },
   { href: "/settings", label: "账号设置", desc: "资料、安全、绑定账号和注销" },
 ];
@@ -136,6 +113,8 @@ const helpItems = [
 ];
 
 let cachedAuth: StoredAuth | null = null;
+const SIDEBAR_COLLAPSED_KEY = "xuguang_sidebar_collapsed_manual";
+const LEGACY_SIDEBAR_COLLAPSED_KEY = "xuguang_sidebar_collapsed";
 
 function currentPathMatches(pathname: string, href: string) {
   if (href === "/workspace") return pathname === "/workspace";
@@ -148,30 +127,25 @@ function WorkspaceLogo({ collapsed }: { collapsed: boolean }) {
       <Link
         href="/"
         className={cn(
-          "flex items-center rounded-3xl px-3 py-3 transition hover:bg-slate-100",
-          collapsed ? "justify-center" : "gap-3",
+          "flex items-center rounded-xl px-3 py-2 transition hover:bg-slate-100",
+          collapsed ? "justify-center" : "gap-2.5",
         )}
         aria-label="前往官网"
       >
         {collapsed ? (
-          <span className="text-2xl font-black tracking-tight text-slate-950">序</span>
+          <span className="text-xl font-black tracking-tight text-slate-950">序</span>
         ) : (
           <div className="flex flex-col leading-none">
-            <span className="block text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">XUGUANG</span>
-            <span className="block truncate text-2xl font-black tracking-tight text-slate-950">序光</span>
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">XUGUANG</span>
+            <span className="block truncate text-xl font-black tracking-tight text-slate-950">序光</span>
           </div>
         )}
       </Link>
-      <span
-        className={cn(
-          "pointer-events-none absolute z-50 hidden whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-600 shadow-md",
-          collapsed
-            ? "left-full top-1/2 ml-3 -translate-y-1/2 group-hover/logo:block"
-            : "left-0 top-full mt-1 group-hover/logo:block",
-        )}
-      >
-        前往官网
-      </span>
+      {collapsed ? (
+        <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 shadow-md group-hover/logo:block">
+          前往官网
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -344,19 +318,15 @@ function UtilityPanel({
 function AccountPanel({
   auth,
   displayName,
-  avatarInitial,
   onLogout,
   onClose,
 }: {
   auth: StoredAuth;
   displayName: string;
-  avatarInitial: string;
   onLogout: () => void;
   onClose: () => void;
 }) {
   const email = typeof auth.user.email === "string" ? auth.user.email : "未绑定邮箱";
-  const workspaceName = typeof auth.workspace.name === "string" ? auth.workspace.name : `${displayName}的工作区`;
-  const accountId = typeof auth.user.id === "string" ? auth.user.id : "local-account";
 
   const menuItems = [
     { href: "/workspace", label: "工作台", icon: LayoutDashboard },
@@ -414,8 +384,14 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
   const [status, setStatus] = useState<"checking" | "authenticated" | "anonymous">(() =>
     cachedAuth ? "authenticated" : "checking",
   );
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [utilityCollapsed, setUtilityCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(LEGACY_SIDEBAR_COLLAPSED_KEY);
+      if (window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") return true;
+      if (window.location.pathname.startsWith("/video/create")) return true;
+    }
+    return false;
+  });
   const [activeUtility, setActiveUtility] = useState<UtilityKind>(null);
   const [selectedLanguage, setSelectedLanguage] = useState("zh-CN");
   const [searchQuery, setSearchQuery] = useState("");
@@ -447,6 +423,33 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, []);
+
+  // Listen for sidebar collapse requests from child pages
+  useEffect(() => {
+    function handleCollapse() {
+      setSidebarCollapsed(true);
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, "1");
+    }
+    function handleExpand() {
+      setSidebarCollapsed(false);
+      window.localStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
+    }
+    window.addEventListener("xuguang:collapse-sidebar", handleCollapse);
+    window.addEventListener("xuguang:expand-sidebar", handleExpand);
+
+    // Auto-collapse only for the dense video creation workspace, without
+    // saving it as a global preference for unrelated pages.
+    window.localStorage.removeItem(LEGACY_SIDEBAR_COLLAPSED_KEY);
+    const hasManualPreference = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+    if (!hasManualPreference) {
+      setSidebarCollapsed(pathname.startsWith("/video/create"));
+    }
+
+    return () => {
+      window.removeEventListener("xuguang:collapse-sidebar", handleCollapse);
+      window.removeEventListener("xuguang:expand-sidebar", handleExpand);
+    };
+  }, [pathname]);
 
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem("xuguang_workspace_locale");
@@ -550,10 +553,10 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
       <div
         className={cn(
           "grid min-h-screen transition-[grid-template-columns] duration-200",
-          sidebarCollapsed ? "lg:grid-cols-[72px_minmax(0,1fr)]" : "lg:grid-cols-[260px_minmax(0,1fr)]",
+          sidebarCollapsed ? "lg:grid-cols-[72px_minmax(0,1fr)]" : "lg:grid-cols-[240px_minmax(0,1fr)]",
         )}
       >
-        <aside className="group/sidebar relative sticky top-0 hidden h-screen border-r border-slate-200 bg-white px-4 py-5 lg:flex lg:flex-col">
+        <aside className="group/sidebar relative sticky top-0 hidden h-screen border-r border-slate-200 bg-white px-3 py-4 lg:flex lg:flex-col">
           <div className="shrink-0">
             <WorkspaceLogo collapsed={sidebarCollapsed} />
           </div>
@@ -562,7 +565,12 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
           <div className="group/toggle absolute -right-3 top-1/2 -translate-y-1/2 z-10">
             <button
               type="button"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              onClick={() => {
+                const next = !sidebarCollapsed;
+                setSidebarCollapsed(next);
+                if (next) window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, "1");
+                else window.localStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
+              }}
               className="grid h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm opacity-0 transition-all duration-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 hover:shadow group-hover/sidebar:opacity-100"
               aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
             >
@@ -573,17 +581,13 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
             </span>
           </div>
 
-          <nav ref={sidebarNavRef} className="mt-8 flex-1 space-y-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] pr-1">
+          <nav ref={sidebarNavRef} className="sidebar-scroll mt-4 flex-1 space-y-0.5 overflow-y-auto overscroll-contain pr-0.5 [scrollbar-gutter:stable]">
             {sidebarSections.map((section) => (
               <div key={section.title}>
-                {!sidebarCollapsed ? (
-                  <p className="mt-4 mb-2 px-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                    {section.title}
-                  </p>
-                ) : (
-                  <div className="mt-4 mb-1 mx-auto h-px w-6 bg-slate-200" />
-                )}
-                <div className="space-y-1">
+                {sidebarCollapsed ? (
+                  <div className="mt-3 mb-1 mx-auto h-px w-5 bg-slate-200" />
+                ) : null}
+                <div className="space-y-0.5">
                   {section.items.map((item) => {
                     const Icon = item.icon;
                     const selected = currentPathMatches(pathname, item.href);
@@ -593,7 +597,7 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
                         href={item.pending ? "#" : item.href}
                         title={sidebarCollapsed ? item.label : undefined}
                         className={cn(
-                          "flex items-center rounded-xl px-4 py-2.5 text-sm font-semibold transition",
+                          "flex items-center rounded-xl px-3 py-2 text-sm font-medium transition",
                           sidebarCollapsed ? "justify-center" : "gap-3",
                           selected
                             ? "bg-blue-50 text-blue-700"
@@ -620,14 +624,14 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
             ))}
           </nav>
 
-
         </aside>
 
         <section className="min-w-0">
-          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
-            <div className="flex h-[76px] items-center gap-4 px-5 lg:px-8">
-              <form ref={searchRef} onSubmit={handleSearch} className="relative min-w-0 flex-1 max-w-4xl">
-                <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur">
+            <div className="flex h-[72px] items-center gap-3 px-5 lg:px-8">
+              <div className="flex-1" />
+              <form ref={searchRef} onSubmit={handleSearch} className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <input
                   value={searchQuery}
                   onChange={(event) => {
@@ -635,8 +639,8 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
                     setSearchOpen(true);
                   }}
                   onFocus={() => setSearchOpen(true)}
-                  className="h-14 w-full rounded-full border border-slate-200 bg-slate-100 pl-14 pr-5 text-base font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  placeholder="搜索会话、模型、文件或知识库"
+                  className="h-9 w-48 rounded-full border border-slate-200 bg-slate-100 pl-9 pr-3 text-xs font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-50"
+                  placeholder="搜索..."
                   aria-label="搜索"
                 />
                 {searchOpen ? (
@@ -673,16 +677,16 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
                 <button
                   type="button"
                   onClick={() => toggleUtility("language")}
-                  className="hidden h-11 items-center gap-2 rounded-full px-3 font-bold text-slate-700 transition hover:bg-slate-100 md:flex"
+                  className="hidden h-9 items-center gap-2 rounded-full px-3 text-sm font-bold text-slate-600 transition hover:bg-slate-100 md:flex"
                 >
-                  <Globe2 className="h-5 w-5" />
-                  <span className="max-w-24 truncate">{languageLabel}</span>
-                  <ChevronDown className="h-4 w-4" />
+                  <Globe2 className="h-4 w-4" />
+                  <span className="max-w-20 truncate">{languageLabel}</span>
+                  <ChevronDown className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => toggleUtility("account")}
-                  className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-cyan-300 to-blue-500 text-xl font-black text-white shadow-lg shadow-cyan-200"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-cyan-300 to-blue-500 text-sm font-black text-white shadow-sm"
                   aria-label="账户菜单"
                 >
                   {avatarInitial}
@@ -692,11 +696,11 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
           </header>
 
           <main className={cn(
-            "mx-auto max-w-[1680px] px-5 lg:px-8 lg:pr-20",
-            title ? "py-8" : "py-0",
+            "mx-auto max-w-[1440px] px-6 lg:px-10",
+            title ? "py-6" : "py-0",
           )}>
             {title ? (
-              <div className="mb-7 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+              <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                 <div className="max-w-4xl">
                   <h1 className="text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">{title}</h1>
                   {subtitle ? <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">{subtitle}</p> : null}
@@ -740,7 +744,6 @@ export function WorkspaceShell({ active, title, subtitle, children, actions, rig
         <AccountPanel
           auth={auth}
           displayName={displayName}
-          avatarInitial={avatarInitial}
           onLogout={handleLogout}
           onClose={() => setActiveUtility(null)}
         />

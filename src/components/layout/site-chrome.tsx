@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 
 const workspacePrefixes = [
   "/workspace",
+  "/tasks",
   "/ai",
   "/drive",
   "/docs",
@@ -19,6 +20,11 @@ const workspacePrefixes = [
   "/image-gen",
   "/video",
   "/video-gen",
+  "/creation",
+  "/team",
+  "/admin",
+  "/enterprise",
+  "/usage",
 ];
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {

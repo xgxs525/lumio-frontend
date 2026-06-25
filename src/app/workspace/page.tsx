@@ -46,13 +46,6 @@ const taskCards = [
   },
 ];
 
-const recentTasks = [
-  { title: "总结销售复盘报告", model: "Claude Sonnet 4.6", time: "12 分钟前" },
-  { title: "生成短视频文案", model: "GPT-5.6", time: "今天 09:40" },
-  { title: "解释代码报错", model: "DeepSeek-V4-Pro", time: "昨天 20:18" },
-  { title: "生成封面图提示词", model: "图像生成模型", time: "昨天 18:30" },
-];
-
 const assetCards = [
   { href: "/drive", icon: Upload, color: "bg-sky-50 text-sky-600", title: "云盘", desc: "存放 AI 可处理的文件，方便随时调用、分析和总结。" },
   { href: "/docs", icon: MessageSquareText, color: "bg-rose-50 text-rose-600", title: "文档", desc: "保存 AI 生成或整理后的内容，支持继续编辑和复用。" },
@@ -101,41 +94,6 @@ function ModelRecommendCard() {
   );
 }
 
-function AIPromptPanel() {
-  const prompts = [
-    "帮我写一段短视频文案",
-    "帮我翻译并润色这段英文",
-    "帮我分析这份 PDF",
-    "帮我生成一张封面图提示词",
-    "帮我解释这段代码",
-    "帮我规划一个视频脚本",
-  ];
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6">
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-100 text-blue-700">
-          <Bot className="h-4 w-4" />
-        </span>
-        <span className="text-base font-bold text-slate-900">序光智能任务</span>
-      </div>
-      <p className="mt-3 text-sm leading-6 text-slate-500">
-        我可以帮你选择合适的 AI 模型，完成写作、翻译、编程、分析、文件理解、图像生成和视频创作。
-      </p>
-      <div className="mt-4 grid gap-2">
-        {prompts.map((item) => (
-          <Link
-            key={item}
-            href="/ai"
-            className="block rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
-          >
-            {item}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function WorkspacePage() {
   return (
     <WorkspaceShell
@@ -145,7 +103,6 @@ export default function WorkspacePage() {
       rightPanel={
         <div className="space-y-5">
           <ModelRecommendCard />
-          <AIPromptPanel />
         </div>
       }
       actions={
@@ -189,41 +146,6 @@ export default function WorkspacePage() {
             </Link>
           );
         })}
-      </section>
-
-      {/* ── Recent tasks + Model recommend ── */}
-      <section className="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="flex items-center justify-between border-b border-slate-200 p-5">
-            <div>
-              <h2 className="text-lg font-bold text-slate-950">最近智能任务</h2>
-              <p className="mt-1 text-sm text-slate-500">你的 AI 会话和使用模型的最近记录。</p>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/ai">
-                查看全部
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {recentTasks.map((item) => (
-              <Link
-                key={item.title}
-                href="/ai"
-                className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-slate-50"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-slate-950">{item.title}</p>
-                  <p className="mt-1 text-xs text-slate-500">使用模型：{item.model}</p>
-                </div>
-                <span className="shrink-0 text-xs text-slate-400">{item.time}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="hidden 2xl:block"><ModelRecommendCard /></div>
       </section>
 
       {/* ── Asset & Content ── */}

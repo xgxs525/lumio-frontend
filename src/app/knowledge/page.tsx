@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Database, Loader2, MoreHorizontal, Pencil, Plus, Search, Settings, Trash2, Upload, X } from "lucide-react";
+import { Copy, Database, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
 
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
@@ -171,11 +171,6 @@ export default function KnowledgePage() {
     }
   }
 
-  function unavailable(label: string) {
-    toast.error(`${label}暂未开放`);
-    setMenuId("");
-  }
-
   const filtered = useMemo(() => {
     let items = [...bases];
     if (filter !== "全部") {
@@ -201,7 +196,6 @@ export default function KnowledgePage() {
   }, [bases, filter, search, sort]);
 
   const totalSources = bases.reduce((s, b) => s + asNum(b.sourceCount), 0);
-  const totalChunks = bases.reduce((s, b) => s + asNum(b.chunkCount), 0);
   const latestUpdate = bases.length ? (() => {
     const dates = bases.map((b) => asText(b.updatedAt)).filter(Boolean).sort().reverse();
     return dates[0] ? format(parseISO(dates[0])) : "—";
@@ -214,11 +208,10 @@ export default function KnowledgePage() {
       subtitle="把文件、文档、文本和网页链接整理成 AI 可以检索、总结和问答的知识来源。"
       actions={<Button onClick={() => { setCreateOpen(true); setFormTouched(false); }}><Plus className="h-4 w-4" />新建知识库</Button>}
     >
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {[
           ["知识库", String(bases.length), "个"],
           ["内容数量", String(totalSources), "条"],
-          ["索引片段", String(totalChunks), "个"],
           ["最近更新", latestUpdate, ""],
         ].map(([label, value, unit]) => (
           <div key={label} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
@@ -290,8 +283,21 @@ export default function KnowledgePage() {
                     <MenuLink href={`/knowledge/${id}`} label="打开" onClick={() => setMenuId("")} />
                     <MenuLink href={`/knowledge/${id}/add-source`} label="添加资料" onClick={() => setMenuId("")} />
                     <MenuLink href={`/knowledge/${id}?settings=1`} label="知识库设置" onClick={() => setMenuId("")} />
+                    <button onClick={() => openEditModal(b)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Pencil className="h-4 w-4" />编辑信息</button>
                     <button onClick={() => copyBaseLink(b)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50"><Copy className="h-4 w-4" />复制链接</button>
-                    <button onClick={() => unavailable("停用知识库")} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50">停用知识库</button>
+                    <button
+                      onClick={async () => {
+                        setMenuId("");
+                        try {
+                          await api.updateKnowledgeBase(id, { status: "disabled" });
+                          setBases((prev) => prev.map((item) => asText(item.id) === id ? { ...item, status: "disabled" } : item));
+                          toast.success("知识库已停用。");
+                        } catch (e) {
+                          toast.error(e instanceof Error ? e.message : "停用失败");
+                        }
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-500 hover:bg-slate-50"
+                    >停用知识库</button>
                     <div className="my-1 border-t border-slate-100" />
                     <button onClick={() => openDeleteModal(b)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" />删除知识库</button>
                   </div>
@@ -360,7 +366,7 @@ export default function KnowledgePage() {
         <p className="text-sm text-slate-600">
           确定要删除 <strong className="text-red-600">{asText(deleteTarget?.name)}</strong> 吗？此操作不可撤销。
         </p>
-        <p className="mt-2 text-xs text-slate-400">删除后，知识库中的知识内容、索引片段和问答记录将无法恢复。</p>
+        <p className="mt-2 text-xs text-slate-400">删除后，知识库中的知识内容和相关记录将无法恢复。</p>
         <div className="mt-5 rounded-xl border border-red-100 bg-red-50/50 p-4">
           <p className="mb-3 text-xs font-semibold text-red-700">请输入以下文字以确认删除：</p>
           <div className="mb-3 rounded-lg border border-red-200 bg-white px-3 py-2 text-center">

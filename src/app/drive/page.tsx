@@ -2,21 +2,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  Brain,
-  Cloud,
+  ChevronDown,
   Download,
   Eye,
+  FilePlus,
   FileText,
   FolderOpen,
+  FolderPlus,
+  HardDrive,
   Loader2,
+  MoreHorizontal,
   Plus,
+  Presentation,
   RefreshCw,
   Share2,
   Sparkles,
+  Table,
   Trash2,
   Upload,
-  Wand2,
+  WandSparkles,
 } from "lucide-react";
 
 import { AppModal } from "@/components/ui/app-modal";
@@ -73,13 +79,25 @@ function fileName(file: DriveRecord) {
 }
 
 export default function DrivePage() {
+  const router = useRouter();
   const uploadRef = useRef<HTMLInputElement>(null);
+  const createMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [overview, setOverview] = useState<DriveRecord>({});
   const [folders, setFolders] = useState<DriveRecord[]>([]);
   const [files, setFiles] = useState<DriveRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const [folderName, setFolderName] = useState("");
+  const [fileCreateModal, setFileCreateModal] = useState<{ open: boolean; type: string; label: string; defaultName: string; ext: string; mime: string; content: string }>({
+    open: false, type: "", label: "", defaultName: "", ext: "", mime: "", content: "",
+  });
+  const [fileCreateName, setFileCreateName] = useState("");
+  const [uploadRecordsOpen, setUploadRecordsOpen] = useState(false);
   const [selectedType, setSelectedType] = useState(fileTypes[0]);
   const [name, setName] = useState("");
   const [preview, setPreview] = useState<PreviewRecord | null>(null);
@@ -115,6 +133,21 @@ export default function DrivePage() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (createMenuRef.current && !createMenuRef.current.contains(e.target as Node)) {
+        setCreateMenuOpen(false);
+      }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    }
+    if (createMenuOpen || moreMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [createMenuOpen, moreMenuOpen]);
+
   async function handleCreate() {
     if (!name.trim()) return;
     setBusy(true);
@@ -134,6 +167,51 @@ export default function DrivePage() {
       setIsCreateOpen(false);
       toast.success("创建成功，已保存到当前工作空间。");
       await loadDrive();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "创建失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreateFolder() {
+    if (!folderName.trim()) return;
+    setBusy(true);
+    try {
+      await api.createDriveFolder(folderName.trim());
+      setFolderName("");
+      setFolderModalOpen(false);
+      toast.success("文件夹已创建。");
+      await loadDrive();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "创建文件夹失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openFileCreate(type: string, label: string, defaultName: string, ext: string, mime: string, content: string) {
+    setCreateMenuOpen(false);
+    setFileCreateName(defaultName);
+    setFileCreateModal({ open: true, type, label, defaultName, ext, mime, content });
+  }
+
+  async function handleCreateFile() {
+    const name = fileCreateName.trim();
+    if (!name) return;
+    setBusy(true);
+    try {
+      const result = await api.createDriveFile({
+        name: name + (fileCreateModal.ext || ""),
+        extension: fileCreateModal.ext,
+        mime_type: fileCreateModal.mime,
+        content: fileCreateModal.content,
+      });
+      toast.success(`${fileCreateName} 已创建。`);
+      setFileCreateModal({ open: false, type: "", label: "", defaultName: "", ext: "", mime: "", content: "" });
+      await loadDrive();
+      const fileId = (result.data as DriveRecord)?.id;
+      if (fileId) router.push(`/drive/files/${String(fileId)}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "创建失败");
     } finally {
@@ -272,24 +350,112 @@ export default function DrivePage() {
       subtitle="统一存储文件、文档、模板、知识库附件和处理结果，支持预览、AI 索引、总结与团队共享。"
       actions={
         <>
-          <Button onClick={() => setIsCreateOpen(true)}>
-            <Plus className="h-4 w-4" />
-            新建
-          </Button>
-          <Button variant="secondary" onClick={() => uploadRef.current?.click()} disabled={busy}>
-            <Upload className="h-4 w-4" />
+          <div ref={createMenuRef} className="relative">
+            <Button size="sm" onClick={() => setCreateMenuOpen(!createMenuOpen)} className="gap-1 h-8 text-xs">
+              <Plus className="h-3.5 w-3.5" />
+              新建
+              <ChevronDown className={`h-3 w-3 transition ${createMenuOpen ? "rotate-180" : ""}`} />
+            </Button>
+            {createMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_12px_40px_rgba(15,23,42,0.12)]">
+                <button
+                  type="button"
+                  onClick={() => { setCreateMenuOpen(false); setFolderModalOpen(true); }}
+                  className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50"
+                >
+                  <FolderPlus className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">新建文件夹</p>
+                    <p className="mt-0.5 text-xs text-slate-400">用于整理文件</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openFileCreate("document", "在线文档", "未命名文档", ".md", "text/markdown", "# 未命名文档\n\n")}
+                  className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50"
+                >
+                  <FilePlus className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">新建在线文档</p>
+                    <p className="mt-0.5 text-xs text-slate-400">创建可编辑文档</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openFileCreate("spreadsheet", "在线表格", "未命名表格", ".csv", "text/csv", "字段1,字段2\n")}
+                  className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50"
+                >
+                  <Table className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">新建在线表格</p>
+                    <p className="mt-0.5 text-xs text-slate-400">创建数据表格</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openFileCreate("presentation", "在线演示", "未命名演示", ".md", "text/markdown", "# 未命名演示\n\n---\n\n## 第1页\n\n")}
+                  className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50"
+                >
+                  <Presentation className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">新建在线演示</p>
+                    <p className="mt-0.5 text-xs text-slate-400">创建演示文稿</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openFileCreate("text", "文本文件", "未命名文本", ".txt", "text/plain", "")}
+                  className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50"
+                >
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">新建文本文件</p>
+                    <p className="mt-0.5 text-xs text-slate-400">创建纯文本或 Markdown 文件</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => uploadRef.current?.click()} disabled={busy} className="h-8 text-xs">
+            <Upload className="h-3.5 w-3.5" />
             上传文件
           </Button>
-          <Button variant="ghost" onClick={() => void loadDrive()} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            刷新
-          </Button>
-          <Button variant="ghost" asChild>
-            <Link href="/drive/trash">
-              <Trash2 className="h-4 w-4" />
-              回收站
-            </Link>
-          </Button>
+          <div ref={moreMenuRef} className="relative">
+            <Button variant="secondary" size="sm" onClick={() => setMoreMenuOpen(!moreMenuOpen)} className="gap-1 h-8 text-xs">
+              <MoreHorizontal className="h-3.5 w-3.5" />
+              更多
+              <ChevronDown className={`h-3 w-3 transition ${moreMenuOpen ? "rotate-180" : ""}`} />
+            </Button>
+            {moreMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1.5 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_12px_40px_rgba(15,23,42,0.12)]">
+                <Link
+                  href="/drive/trash"
+                  onClick={() => setMoreMenuOpen(false)}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-slate-50"
+                >
+                  <Trash2 className="h-4 w-4 shrink-0 text-slate-400" />
+                  <span className="text-sm font-medium text-slate-700">回收站</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => { setMoreMenuOpen(false); setUploadRecordsOpen(true); }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-slate-50"
+                >
+                  <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                  <span className="text-sm font-medium text-slate-700">上传记录</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMoreMenuOpen(false); void loadDrive(); }}
+                  disabled={loading}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-slate-50"
+                >
+                  <RefreshCw className={`h-4 w-4 shrink-0 text-slate-400 ${loading ? "animate-spin" : ""}`} />
+                  <span className="text-sm font-medium text-slate-700">刷新</span>
+                </button>
+              </div>
+            )}
+          </div>
           <input
             ref={uploadRef}
             className="hidden"
@@ -297,27 +463,6 @@ export default function DrivePage() {
             onChange={(event) => void handleUpload(event.target.files?.[0])}
           />
         </>
-      }
-      rightPanel={
-        <div className="space-y-4 2xl:sticky 2xl:top-24">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5">
-            <Cloud className="mb-4 h-6 w-6 text-cyan-200" />
-            <h2 className="text-xl font-black text-white">空间概览</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              已使用 {formatBytes(storageUsed)}，当前共有 {asNumber(overview.fileCount)} 个文件和 {asNumber(overview.folderCount)} 个文件夹。
-            </p>
-            <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-blue-500" style={{ width: `${storageRate}%` }} />
-            </div>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5">
-            <Brain className="mb-4 h-5 w-5 text-cyan-200" />
-            <h3 className="font-bold text-white">文件 AI</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              PDF、Word、表格、TXT 和 Markdown 可解析为片段，建立向量索引后支持问答、总结和知识库引用。
-            </p>
-          </div>
-        </div>
       }
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -336,35 +481,57 @@ export default function DrivePage() {
 
       <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {folders.map((folder) => (
-          <div key={asText(folder.id)} className="min-w-0 rounded-3xl border border-white/10 bg-white/[0.06] p-5">
-            <FolderOpen className="mb-5 h-8 w-8 text-cyan-200" />
+          <Link
+            key={asText(folder.id)}
+            href={`/drive/folders/${asText(folder.id)}`}
+            className="group min-w-0 rounded-3xl border border-white/10 bg-white/[0.06] p-5 transition hover:bg-white/[0.1]"
+          >
+            <FolderOpen className="mb-5 h-8 w-8 text-cyan-200 transition group-hover:text-cyan-300" />
             <h2 className="break-words text-lg font-black text-white">{asText(folder.name, "未命名文件夹")}</h2>
             <p className="mt-2 text-sm text-slate-400">创建于 {formatDate(folder.createdAt)}</p>
-          </div>
+          </Link>
         ))}
       </section>
 
-      <section className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06]">
-        <div className="flex flex-col gap-3 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <section className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06] p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h2 className="text-xl font-black text-white">文件列表</h2>
-            <p className="mt-1 text-sm text-slate-400">上传、创建和 AI 处理后的文件都会保存到当前工作空间。</p>
+            <h2 className="text-xl font-black text-white">上传记录</h2>
+            <p className="mt-1 text-sm text-slate-400">上传、创建和 AI 处理后的文件记录已收起，点击按钮查看明细。</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => void loadDrive()} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            刷新
+          <Button variant="secondary" onClick={() => setUploadRecordsOpen(true)}>
+            <FileText className="h-4 w-4" />
+            查看上传记录
           </Button>
         </div>
-        <div className="overflow-x-auto">
+      </section>
+
+      <AppModal
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="secondary" onClick={() => void loadDrive()} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              刷新记录
+            </Button>
+            <Button onClick={() => setUploadRecordsOpen(false)}>关闭</Button>
+          </div>
+        }
+        open={uploadRecordsOpen}
+        size="xl"
+        title="上传记录"
+        description="查看上传、创建和 AI 处理后的文件记录。"
+        onClose={() => setUploadRecordsOpen(false)}
+      >
+        <div className="overflow-x-auto rounded-2xl border border-slate-200">
           <div className="min-w-[860px]">
-            <div className="grid grid-cols-[minmax(240px,1.4fr)_120px_120px_140px_340px] gap-4 border-b border-white/10 px-5 py-3 text-xs font-semibold text-slate-500">
+            <div className="grid grid-cols-[minmax(240px,1.4fr)_120px_120px_140px_340px] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold text-slate-500">
               <span>文件名</span>
               <span>类型</span>
               <span>大小</span>
               <span>更新时间</span>
               <span className="text-right">操作</span>
             </div>
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-slate-100 bg-white">
               {loading ? (
                 <div className="p-8 text-center text-sm text-slate-400">正在加载文件...</div>
               ) : files.length === 0 ? (
@@ -375,26 +542,24 @@ export default function DrivePage() {
                   return (
                     <div key={fileId} className="grid grid-cols-[minmax(240px,1.4fr)_120px_120px_140px_340px] items-center gap-4 px-5 py-4 text-sm">
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-300/15 text-cyan-100">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-600">
                           <FileText className="h-5 w-5" />
                         </span>
                         <Link
-                          className="min-w-0 truncate font-semibold text-white hover:text-cyan-100"
+                          className="min-w-0 truncate font-semibold text-slate-900 hover:text-blue-700"
                           href={`/drive/files/${fileId}`}
                           title={fileName(file)}
                         >
                           {fileName(file)}
                         </Link>
                       </div>
-                      <span className="truncate text-slate-300">{asText(file.extension, "文件") || "文件"}</span>
+                      <span className="truncate text-slate-600">{asText(file.extension, "文件") || "文件"}</span>
                       <span className="text-slate-400">{formatBytes(file.size)}</span>
                       <span className="text-slate-400">{formatDate(file.updatedAt || file.createdAt)}</span>
                       <div className="flex flex-wrap justify-end gap-2">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/drive/files/${fileId}`}>
+                        <Button variant="ghost" size="sm" onClick={() => void handlePreview(fileId)}>
                           <Eye className="h-4 w-4" />
                           预览
-                          </Link>
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => openAi(file)}>
                           <Sparkles className="h-4 w-4" />
@@ -418,7 +583,7 @@ export default function DrivePage() {
             </div>
           </div>
         </div>
-      </section>
+      </AppModal>
 
       <AppModal
         footer={
@@ -461,6 +626,69 @@ export default function DrivePage() {
         <label className="mt-5 grid gap-2 text-sm font-semibold text-white">
           名称
           <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：AI 资料、项目启动方案、销售数据表" />
+        </label>
+      </AppModal>
+
+      {/* File Create Modal */}
+      <AppModal
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="secondary" onClick={() => setFileCreateModal({ open: false, type: "", label: "", defaultName: "", ext: "", mime: "", content: "" })}>
+              取消
+            </Button>
+            <Button disabled={!fileCreateName.trim() || busy} onClick={() => void handleCreateFile()}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              创建
+            </Button>
+          </div>
+        }
+        open={fileCreateModal.open}
+        size="sm"
+        title={`新建${fileCreateModal.label}`}
+        description={`创建 ${fileCreateModal.label} 文件。`}
+        onClose={() => setFileCreateModal({ open: false, type: "", label: "", defaultName: "", ext: "", mime: "", content: "" })}
+      >
+        <label className="grid gap-2 text-sm font-semibold text-white">
+          文件名称
+          <Input
+            value={fileCreateName}
+            onChange={(event) => setFileCreateName(event.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreateFile(); }}
+            placeholder={`例如：新建${fileCreateModal.label}`}
+            autoFocus
+          />
+        </label>
+        <p className="mt-2 text-xs text-slate-400">
+          文件将保存为 {fileCreateName || "..."}{fileCreateModal.ext}
+        </p>
+      </AppModal>
+
+      <AppModal
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="secondary" onClick={() => { setFolderModalOpen(false); setFolderName(""); }}>
+              取消
+            </Button>
+            <Button disabled={!folderName.trim() || busy} onClick={() => void handleCreateFolder()}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              创建
+            </Button>
+          </div>
+        }
+        open={folderModalOpen}
+        size="sm"
+        title="新建文件夹"
+        description="在当前目录中创建一个新文件夹用于整理文件。"
+        onClose={() => { setFolderModalOpen(false); setFolderName(""); }}
+      >
+        <label className="grid gap-2 text-sm font-semibold text-white">
+          文件夹名称
+          <Input
+            value={folderName}
+            onChange={(event) => setFolderName(event.target.value)}
+            placeholder="例如：项目资料、设计素材、会议记录"
+            autoFocus
+          />
         </label>
       </AppModal>
 
@@ -539,7 +767,7 @@ export default function DrivePage() {
               文件总结
             </Button>
             <Button variant="secondary" disabled={!aiFile || busy} onClick={() => void runFileAi("clean")}>
-              <Wand2 className="h-4 w-4" />
+              <WandSparkles className="h-4 w-4" />
               表格清洗
             </Button>
             <Button disabled={!aiFile || !question.trim() || busy} onClick={() => void runFileAi("ask")}>

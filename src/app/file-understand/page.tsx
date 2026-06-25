@@ -113,7 +113,7 @@ export default function FileUnderstandPage() {
 
   return (
     <WorkspaceShell
-      active="文件理解"
+      active="知识库"
       title="文件理解"
       subtitle="上传 PDF、Word、Excel、PPT 或图片，让 AI 帮你总结、分析和提取重点。"
       rightPanel={<RightPanel />}

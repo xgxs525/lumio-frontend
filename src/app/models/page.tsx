@@ -29,7 +29,7 @@ interface ModelInfo {
   scenes: string[]; recommended: boolean; favorite: boolean;
 }
 
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 12;
 
 // ── Fallback ─────────────────────────────────────────────────
 const FALLBACK: ModelInfo[] = [
@@ -135,32 +135,30 @@ export default function ModelsPage(){
       {loading?<div className="mt-20 flex flex-col items-center text-center"><Loader2 className="h-8 w-8 animate-spin text-blue-500"/><p className="mt-4 text-sm text-slate-500">加载模型数据...</p></div>
       :sorted.length===0?<div className="mt-20 flex flex-col items-center text-center"><Bot className="h-12 w-12 text-slate-300"/><h2 className="mt-6 text-xl font-bold text-slate-950">暂无可用模型</h2><p className="mt-2 max-w-md text-sm leading-6 text-slate-500">模型接入后会在这里展示。</p><Button className="mt-6" variant="secondary" asChild><Link href="/workspace">返回工作台</Link></Button></div>
       :<>
-      <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {sorted.map(m=>(<div key={m.id} className="group relative rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-slate-300 hover:shadow-sm">
-          <div className="flex items-center gap-2">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {sorted.map(m=>(<div key={m.id} className="group relative rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
+          <div className="flex items-center gap-1.5">
             {m.recommended?<span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">推荐</span>:null}
             {m.favorite?<span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">常用</span>:null}
           </div>
-          <h3 className="mt-3 text-lg font-bold text-slate-950">{m.name}</h3>
-          <p className="mt-0.5 text-xs text-slate-400">{m.vendor}</p>
-          <p className="mt-3 text-xs text-slate-500">{m.features}</p>
-          <p className="mt-2 text-xs leading-relaxed text-slate-500"><span className="font-semibold text-slate-700">适合：</span>{m.suited}</p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
+          <h3 className="mt-2 text-base font-bold text-slate-950">{m.name}</h3>
+          <p className="mt-0.5 text-[11px] text-slate-400">{m.vendor}</p>
+          <p className="mt-2 text-[11px] text-slate-500 line-clamp-2">{m.features}</p>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500"><span className="font-semibold text-slate-700">适合：</span>{m.suited}</p>
+          <div className="mt-2 flex flex-wrap gap-1">
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${spd[m.speed]||"bg-slate-50 text-slate-600"}`}>{m.speed}</span>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${qly[m.quality]||"bg-slate-50 text-slate-600"}`}>{m.quality}质量</span>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${cst[m.cost]||"bg-slate-50 text-slate-600"}`}>{m.cost}消耗</span>
-            <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500">{m.context}</span>
           </div>
-          <div className="mt-3 flex gap-3 text-[10px] text-slate-400">
+          <div className="mt-2 flex gap-3 text-[10px] text-slate-400">
             <span className={m.text?"text-slate-600":""}>文本{m.text?"✓":"✗"}</span>
-            <span className={m.file?"text-slate-600":""}>文件{m.file?"✓":"✗"}</span>
             <span className={m.image?"text-slate-600":""}>图片{m.image?"✓":"✗"}</span>
             <span className={m.video?"text-slate-600":""}>视频{m.video?"✓":"✗"}</span>
           </div>
-          {m.scenes.length>0&&<div className="mt-3 flex flex-wrap gap-1">{m.scenes.map(s=><span key={s} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500">{s}</span>)}</div>}
-          <div className="mt-4 flex gap-2">
-            <Button size="sm" className="flex-1" asChild><Link href="/ai">使用此模型</Link></Button>
-            <button onClick={()=>tf(m.id)} className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition ${m.favorite?"border-amber-200 bg-amber-50 text-amber-600":"border-slate-200 text-slate-400 hover:border-slate-300 hover:text-amber-500"}`}><Star className="h-4 w-4" fill={m.favorite?"currentColor":"none"}/></button>
+          {m.scenes.length>0&&<div className="mt-2 flex flex-wrap gap-1">{m.scenes.map(s=><span key={s} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500">{s}</span>)}</div>}
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" className="h-8 flex-1 text-xs" asChild><Link href="/ai">使用</Link></Button>
+            <button onClick={()=>tf(m.id)} className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition ${m.favorite?"border-amber-200 bg-amber-50 text-amber-600":"border-slate-200 text-slate-400 hover:border-slate-300 hover:text-amber-500"}`}><Star className="h-3.5 w-3.5" fill={m.favorite?"currentColor":"none"}/></button>
           </div>
         </div>))}
       </div>

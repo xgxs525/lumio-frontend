@@ -70,26 +70,7 @@ const slashCommands = [
   { group: "常用", items: [
     { key: "image", icon: ImageIcon, label: "图片", cmd: "image" },
     { key: "table", icon: Table2, label: "表格", cmd: "table" },
-    { key: "columns", icon: Columns2, label: "分栏", soon: true },
-    { key: "callout", icon: Highlighter, label: "高亮块", soon: true },
     { key: "file", icon: FileUp, label: "视频或文件", cmd: "file" },
-    { key: "button", icon: PanelTop, label: "按钮", soon: true },
-  ]},
-  { group: "数据", items: [
-    { key: "kanban", icon: Layout, label: "看板", soon: true },
-    { key: "gantt", icon: BarChart3, label: "甘特图", soon: true },
-    { key: "gallery", icon: Grid3x3, label: "画册", soon: true },
-    { key: "spreadsheet", icon: Table2, label: "电子表格", soon: true },
-  ]},
-  { group: "进阶", items: [
-    { key: "formula", icon: Divide, label: "公式", soon: true },
-    { key: "template", icon: BookTemplate, label: "模板", soon: true },
-    { key: "subpage", icon: BookOpen, label: "子文档", soon: true },
-    { key: "webcard", icon: Globe2, label: "网页卡片", soon: true },
-    { key: "timer", icon: Timer, label: "倒计时", soon: true },
-    { key: "toc", icon: List, label: "目录导航", soon: true },
-    { key: "timeline", icon: Calendar, label: "时间轴", soon: true },
-    { key: "embed", icon: Globe2, label: "内嵌网页", soon: true },
   ]},
 ];
 
@@ -514,12 +495,15 @@ export default function AddSourcePage() {
         sourceId = editor?.getHTML() || editor?.getText() || "";
       }
 
-      const payload: { source_type: string; source_id: string; title?: string } = {
+      const payload = {
         source_type: sourceType,
         source_id: sourceId,
+        title: effectiveTitle.trim() || undefined,
+        process_mode: procMode,
+        generate_summary: genSummary,
+        extract_keywords: extractKeywords,
+        join_qa: joinQa,
       };
-      const payloadTitle = effectiveTitle.trim();
-      if (payloadTitle) payload.title = payloadTitle;
 
       await api.addKnowledgeSource(knowledgeBaseId, payload);
 
@@ -749,8 +733,16 @@ export default function AddSourcePage() {
                 <div className="text-center">
                   <FolderOpen className="mx-auto h-10 w-10 text-slate-300" />
                   <h3 className="mt-4 text-lg font-bold text-slate-900">选择云盘文件</h3>
-                  <p className="mt-1 text-sm text-slate-500">从云盘选择已有文件加入知识库。</p>
-                  <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700">即将支持</p>
+                  <p className="mt-1 text-sm text-slate-500">从本地上传文件加入知识库。</p>
+                  <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt,.md,.xlsx,.pptx" className="hidden" onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleSelectedFileChange(f);
+                    e.currentTarget.value = "";
+                  }} />
+                  <button onClick={() => fileRef.current?.click()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition">
+                    <Upload className="h-4 w-4" />
+                    选择文件上传
+                  </button>
                 </div>
               )}
 
@@ -758,8 +750,16 @@ export default function AddSourcePage() {
                 <div className="text-center">
                   <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
                   <h3 className="mt-4 text-lg font-bold text-slate-900">导入文档</h3>
-                  <p className="mt-1 text-sm text-slate-500">选择已有在线文档加入知识库。</p>
-                  <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700">即将支持</p>
+                  <p className="mt-1 text-sm text-slate-500">从本地上传文档加入知识库。</p>
+                  <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt,.md" className="hidden" onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleSelectedFileChange(f);
+                    e.currentTarget.value = "";
+                  }} />
+                  <button onClick={() => fileRef.current?.click()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition">
+                    <Upload className="h-4 w-4" />
+                    上传文档
+                  </button>
                 </div>
               )}
             </div>

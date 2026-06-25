@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Database, KeyRound, ShieldAlert, Smartphone, User } from "lucide-react";
+import { Camera, KeyRound, ShieldAlert, Smartphone, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +18,7 @@ import {
   type StoredAuth,
 } from "@/lib/auth";
 
-const menuItems = ["个人资料", "安全设置", "绑定账号", "通知偏好", "数据与记录", "账号注销"];
-const notifications = ["处理完成提醒", "模板更新提醒", "团队成员邀请", "知识库索引异常"];
+const menuItems = ["个人资料", "安全设置", "绑定账号", "账号注销"];
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -30,10 +29,19 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmAccount, setConfirmAccount] = useState("");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setAvatarUrl(url);
+    toast.success("头像预览已更新，保存资料后生效");
+  }
 
   function syncAuth() {
     const stored = getStoredAuth();
@@ -92,8 +100,8 @@ export default function SettingsPage() {
     setDeleting(true);
     try {
       await api.deleteAccount({
-        confirmation,
-        currentPassword: deletePassword || undefined,
+        confirmation: confirmAccount,
+        currentPassword: deletePassword,
       });
       clearStoredAuth();
       router.push("/");
@@ -111,7 +119,7 @@ export default function SettingsPage() {
     <WorkspaceShell
       active="账号设置"
       title="账号与安全"
-      subtitle="集中管理个人资料、登录安全、绑定账号、通知偏好和账号注销。"
+      subtitle="集中管理个人资料、登录安全、绑定账号、数据记录和账号注销。"
     >
       <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="h-max rounded-3xl border border-white/10 bg-white/[0.06] p-3">
@@ -132,9 +140,26 @@ export default function SettingsPage() {
           <section id="个人资料" className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
             <div className="mb-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
-                <div className="grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-cyan-300 to-blue-500 text-2xl font-black text-slate-950">
-                  {getAvatarInitial(user)}
-                </div>
+                <label className="group relative cursor-pointer">
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                  <div className="grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-cyan-300 to-blue-500 text-2xl font-black text-slate-950 transition group-hover:opacity-80">
+                    {user.avatarUrl && typeof user.avatarUrl === "string" && user.avatarUrl.startsWith("http") ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={user.avatarUrl as string} alt="头像" className="h-full w-full rounded-3xl object-cover" />
+                    ) : (
+                      getAvatarInitial(user)
+                    )}
+                    <span className="absolute inset-0 flex items-center justify-center rounded-3xl bg-slate-950/40 opacity-0 transition group-hover:opacity-100">
+                      <Camera className="h-5 w-5 text-white" />
+                    </span>
+                  </div>
+                </label>
                 <div>
                   <div className="flex items-center gap-2">
                     <User className="h-5 w-5 text-cyan-200" />
@@ -161,10 +186,6 @@ export default function SettingsPage() {
                 <label className="grid gap-2 text-sm font-semibold text-white">
                   手机号
                   <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="可选，绑定手机号" />
-                </label>
-                <label className="grid gap-2 text-sm font-semibold text-white">
-                  头像地址
-                  <Input value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} placeholder="https://..." />
                 </label>
               </div>
               <div>
@@ -221,96 +242,84 @@ export default function SettingsPage() {
                 <Smartphone className="h-5 w-5 text-cyan-200" />
                 <div>
                   <h2 className="text-2xl font-black text-white">绑定账号</h2>
-                  <p className="mt-1 text-sm text-slate-400">后续可接入微信、QQ、手机号和企业身份源。</p>
+                  <p className="mt-1 text-sm text-slate-400">管理已绑定的登录方式，支持邮箱、手机号、微信和 QQ。</p>
                 </div>
               </div>
               <div className="grid gap-3">
                 {[
-                  ["邮箱账号", email || "未绑定"],
-                  ["手机号", phone || "未绑定"],
-                  ["微信登录", "待接入"],
-                  ["QQ 登录", "待接入"],
-                ].map(([label, value]) => (
+                  { label: "邮箱账号", value: email || "未绑定", type: "email" },
+                  { label: "手机号", value: phone || "未绑定", type: "phone" },
+                  { label: "微信登录", value: "未绑定", type: "wechat" },
+                  { label: "QQ 登录", value: "未绑定", type: "qq" },
+                ].map(({ label, value, type }) => (
                   <div key={label} className="flex items-center justify-between rounded-2xl bg-white/[0.05] px-4 py-3">
                     <span className="font-semibold text-white">{label}</span>
-                    <span className="text-sm text-slate-400">{value}</span>
+                    <div className="flex items-center gap-3">
+                      {value !== "未绑定" ? (
+                        <>
+                          <span className="text-sm text-slate-400">{value}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toast.info(`${label}解绑功能即将上线`)}
+                            className="h-7 rounded-lg text-xs text-slate-400 hover:text-red-400"
+                          >
+                            解绑
+                          </Button>
+                        </>
+                      ) : type === "wechat" || type === "qq" ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => toast.info(`${label}接入中，后续将支持扫码绑定`)}
+                          className="h-8 rounded-lg text-xs"
+                        >
+                          绑定
+                        </Button>
+                      ) : (
+                        <span className="text-sm text-slate-400">{value}</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           </section>
 
-          <section id="通知偏好" className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
-            <div className="mb-6 flex items-center gap-3">
-              <Bell className="h-5 w-5 text-cyan-200" />
-              <div>
-                <h2 className="text-2xl font-black text-white">通知偏好</h2>
-                <p className="mt-1 text-sm text-slate-400">控制处理完成、模板更新和团队协作提醒。</p>
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {notifications.map((item) => (
-                <div key={item} className="flex items-center justify-between rounded-2xl bg-white/[0.05] px-4 py-4">
-                  <span className="font-semibold text-white">{item}</span>
-                  <span className="h-7 w-12 rounded-full bg-cyan-300 p-1">
-                    <span className="block h-5 w-5 translate-x-5 rounded-full bg-slate-950" />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section id="数据与记录" className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
-            <div className="mb-6 flex items-center gap-3">
-              <Database className="h-5 w-5 text-cyan-200" />
-              <div>
-                <h2 className="text-2xl font-black text-white">数据与记录</h2>
-                <p className="mt-1 text-sm text-slate-400">查看处理历史、文件、模板和账号数据。</p>
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {["处理历史", "我的文件", "我的模板", "导出账号数据"].map((item) => (
-                <Button key={item} variant="secondary" type="button">
-                  {item}
-                </Button>
-              ))}
-            </div>
-          </section>
-
-          <section id="账号注销" className="rounded-3xl border border-red-400/25 bg-red-500/10 p-6">
+          <section id="账号注销" className="rounded-3xl border border-red-400/25 bg-white/[0.06] p-6">
             <div className="mb-5 flex items-center gap-3">
               <ShieldAlert className="h-5 w-5 text-red-200" />
               <div>
                 <h2 className="text-2xl font-black text-white">注销账号</h2>
-                <p className="mt-1 text-sm text-red-100/70">这是高风险操作，请谨慎确认。</p>
+                <p className="mt-1 text-sm text-slate-300">这是高风险操作，请谨慎确认。</p>
               </div>
             </div>
-            <p className="max-w-3xl leading-7 text-red-100/78">
+            <p className="max-w-3xl leading-7 text-slate-300">
               注销后当前账号将无法继续登录。系统会撤销所有登录会话，并释放邮箱与手机号。个人空间数据清理和团队资产移交后续可接入异步任务。
             </p>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-semibold text-white">
-                当前密码
+                当前密码 *
                 <Input
                   autoComplete="current-password"
                   value={deletePassword}
                   onChange={(event) => setDeletePassword(event.target.value)}
-                  placeholder="可选，用于再次确认身份"
+                  placeholder="必填，用于确认身份"
                   type="password"
                 />
               </label>
               <label className="grid gap-2 text-sm font-semibold text-white">
-                输入“注销账号”
+                输入账号名称确认 *
                 <Input
-                  value={confirmation}
-                  onChange={(event) => setConfirmation(event.target.value)}
-                  placeholder="注销账号"
+                  value={confirmAccount}
+                  onChange={(e) => setConfirmAccount(e.target.value)}
+                  placeholder={`输入「${email}」以确认注销`}
                 />
               </label>
             </div>
             <Button
-              className="mt-5 border border-red-300/40 bg-red-500/20 text-red-100 hover:bg-red-500/30"
-              disabled={deleting || confirmation !== "注销账号"}
+              className="mt-5 border border-red-300/40 bg-red-500/20 text-red-100 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={deleting || !deletePassword || confirmAccount !== email}
               onClick={handleDeleteAccount}
               type="button"
             >
